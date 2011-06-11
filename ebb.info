@@ -1,0 +1,9 @@
+name = Entity Building Blocks
+description = Entity Building Blocks
+core = 7.x
+
+files[] = ebb.install
+files[] = ebb.module
+
+dependencies[] = entity
+ 

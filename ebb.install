@@ -1,0 +1,75 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Entity Building Blocks module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function ebb_schema() {
+  $schema['ebb'] = array(
+    'description' => 'The base table for Entity Building Blocks.',
+    'fields' => array(
+      'ebbid' => array(
+        'description' => 'The primary identifier for an Entity Building Block.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'The {ebb_type}.type of this Entity Building Block.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'status' => array(
+        'description' => 'Boolean indicating whether the Entity Building Block is published (visible to non-administrators).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+    ),
+    'unique keys' => array(
+      'ebbid' => array('ebbid'),
+    ),
+    'primary key' => array('ebbid'),
+  );
+  
+  $schema['ebb_type'] = array(
+    'description' => 'Stores information about all defined {ebb} types.',
+    'fields' => array(
+      'type' => array(
+        'description' => 'The machine-readable name of this type.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+      ),
+      'name' => array(
+        'description' => 'The human-readable name of this type.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'translatable' => TRUE,
+      ),
+      'description' => array(
+        'description' => 'A brief description of this type.',
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'medium',
+        'translatable' => TRUE,
+      ),
+      'help' => array(
+        'description' => 'Help information shown to the user when creating a {ebb} of this type.',
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'medium',
+        'translatable' => TRUE,
+      ),
+    ),
+    'primary key' => array('type'),
+  );
+}
