@@ -30,10 +30,14 @@ function ebb_schema() {
         'type' => 'int',
         'not null' => TRUE,
         'default' => 1,
+        'size' => 'tiny',
       ),
     ),
-    'unique keys' => array(
-      'ebbid' => array('ebbid'),
+    'foreign keys' => array(
+      'type' => array(
+        'table' => 'ebb_type',
+        'columns' => array('type' => 'type'),
+      ),
     ),
     'primary key' => array('ebbid'),
   );
@@ -41,13 +45,19 @@ function ebb_schema() {
   $schema['ebb_type'] = array(
     'description' => 'Stores information about all defined {ebb} types.',
     'fields' => array(
+      'id' => array( // Required for internal use of the EntityAPI
+        'description' => 'The primary identifier for an Entity Building Block Type.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
       'type' => array(
         'description' => 'The machine-readable name of this type.',
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
       ),
-      'name' => array(
+      'label' => array(
         'description' => 'The human-readable name of this type.',
         'type' => 'varchar',
         'length' => 255,
@@ -60,16 +70,139 @@ function ebb_schema() {
         'type' => 'text',
         'not null' => TRUE,
         'size' => 'medium',
+        'default' => '',
         'translatable' => TRUE,
       ),
       'help' => array(
         'description' => 'Help information shown to the user when creating a {ebb} of this type.',
         'type' => 'text',
-        'not null' => TRUE,
+        'not null' => FALSE,
         'size' => 'medium',
         'translatable' => TRUE,
       ),
+    ) + entity_exportable_schema_fields(),
+    'primary key' => array('id'),
+    'unique kyes' => array(
+      'type' => array('type'),
+      'label' => array('label'),
     ),
-    'primary key' => array('type'),
   );
+  
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function ebb_install() {
+  // Create all the fields
+  foreach (_ebb_type_installed_fields() as $field) {
+    field_create_field($field);
+  }
+  
+  // Create all the field instances
+  foreach (_ebb_type_installed_instances() as $instance) {
+    field_create_instance($instance);
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ebb_uninstall() {
+  // Delete all field instances defined by this module, their data and the field itself
+  foreach (array_keys(_ebb_type_installed_fields()) as $field_name) {
+    field_delete_field($field_name);
+  }
+  
+  // Delete all field instances attached to the entity types defined by this module
+  $instances = array();
+  // @TODO: collect all instances of all entity types, not just the default ones
+  $instances = array_merge($instances, field_info_instances('ebb', 'ebb'));
+  $instances = array_merge($instances, field_info_instances('ebb_type', 'ebb_type'));
+  foreach ($intances as $instance_name => $instance) {
+    field_delete_instance($instance);
+  }
+  
+  // Purge all field information
+  field_purge_batch(1000);
+}
+
+/**
+ * Return a structured array defining the fields created by this module
+ */
+function _ebb_type_installed_fields() {
+  $fields = array();
+  
+  // Create an image field named "Sample Image", enabled for the 'ebb_type' entity.
+  $fields['field_ebb_type_image'] = array(
+    'field_name' => 'field_ebb_type_image',
+    'label' => t('Sample Image'),
+    'type' => 'image',
+    'entity_types' => array('ebb_type'),
+    'cardinality' => 1,
+    'translatable' => TRUE,
+    'locked' => TRUE,
+    'indexes' => array('fid' => array('fid')),
+    'settings' => array(
+      'uri_scheme' => 'public',
+      'default_image' => FALSE,
+    ),
+    'storage' => array(
+      'type' => 'field_sql_storage',
+      'settings' => array(),
+    ),
+  );
+  
+  return $fields;
+}
+
+/**
+ * Return a structured array defining the field instances created by this module
+ */
+function _ebb_type_installed_instances() {
+  $instances = array();
+  
+  // Create an instance of the image field "Sample Image"
+  $instances['field_ebb_type_image'] = array(
+    'field_name' => 'field_ebb_type_image',
+    'label' => t('Sample Image'),
+    'entity_type' => 'ebb_type',
+    'bundle' => 'ebb_type',
+    'description' => t('Upload a sample image for this Entity Building Block Type.'),
+    'required' => FALSE,
+    'settings' => array(
+      'file_directory' => 'field/image',
+      'file_extensions' => 'png gif jpg jpeg',
+      'max_filesize' => '',
+      'max_resolution' => '',
+      'min_resolution' => '',
+      'alt_field' => TRUE,
+      'title_field' => '',
+    ),
+    'widget' => array(
+      'type' => 'image_image',
+      'settings' => array(
+        'progress_indicator' => 'throbber',
+        'preview_image_style' => 'thumbnail',
+      ),
+      'weight' => -1,
+    ),
+    'display' => array(
+      'default' => array(
+        'label' => 'hidden',
+        'type' => 'image',
+        'settings' => array('image_style' => 'large', 'image_link' => ''),
+        'weight' => -1,
+      ),
+      'teaser' => array(
+        'label' => 'hidden',
+        'type' => 'image',
+        'settings' => array('image_style' => 'medium', 'image_link' => ''),
+        'weight' => -1,
+      ),
+    ),
+  );
+  
+  return $instances;
 }
