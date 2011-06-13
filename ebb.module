@@ -11,7 +11,8 @@
 function ebb_help($path, $arg) {
   switch ($path) {
     case "admin/help#entity-building-blocks":
-      $output = '<h3>' . t('About') . '</h3>';
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
       // @TODO: write help documentation
       return $output;
       break;

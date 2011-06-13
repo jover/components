@@ -117,9 +117,8 @@ function ebb_uninstall() {
   
   // Delete all field instances attached to the entity types defined by this module
   $instances = array();
-  // @TODO: collect all instances of all entity types, not just the default ones
-  $instances = array_merge($instances, field_info_instances('ebb', 'ebb'));
-  $instances = array_merge($instances, field_info_instances('ebb_type', 'ebb_type'));
+  $instances = array_merge($instances, field_info_instances('ebb'));
+  $instances = array_merge($instances, field_info_instances('ebb_type'));
   foreach ($intances as $instance_name => $instance) {
     field_delete_instance($instance);
   }

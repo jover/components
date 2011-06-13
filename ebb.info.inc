@@ -14,9 +14,9 @@ class EntityBuildingBlocksMetadataController extends EntityDefaultMetadataContro
     $info = parent::entityPropertyInfo();
     $properties = &$info[$this->type]['properties'];
     
-    $properties['name'] = array(
-      'name' => t('Name'),
-      'description' => t('The Entity Building Block name.'),
+    $properties['label'] = array(
+      'name' => t('Label'),
+      'description' => t('The Entity Building Block label.'),
       'getter callback' => 'entity_property_getter_method',
     );
     
