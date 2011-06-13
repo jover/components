@@ -70,7 +70,7 @@ function ebb_schema() {
         'type' => 'text',
         'not null' => TRUE,
         'size' => 'medium',
-        'default' => '',
+        /*'default' => '',*/
         'translatable' => TRUE,
       ),
       'help' => array(

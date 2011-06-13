@@ -56,7 +56,7 @@ function ebb_entity_info() {
     'entity class' => 'EntityBuildingBlockType',
     'controller class' => 'EntityAPIController',
     'base table' => 'ebb_type',
-    'fieldable' => FALSE,
+    'fieldable' => TRUE,
     'bundle of' => 'ebb',
     'exportable' => TRUE,
     'entity keys' => array(

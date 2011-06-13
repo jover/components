@@ -53,6 +53,24 @@ function ebb_type_form($form, &$form_state, $ebb_type, $op = 'edit') {
     '#description' => t('A unique machine-readable name for this Entity Building Block Type. It must only contain lowercase letters, numbers, and underscores.'),
   );
   
+  $form['description'] = array(
+    '#title' => t('Description'),
+    '#type' => 'textarea',
+    '#default_value' => $ebb_type->description,
+    '#description' => t('A brief description of this type.'),
+    '#required' => TRUE,
+    '#rows' => 2,
+  );
+  
+  $form['help'] = array(
+    '#title' => t('Help'),
+    '#type' => 'textarea',
+    '#default_value' => $ebb_type->help,
+    '#description' => t('Help information shown to the user when creating an Entity Building Block of this type.'),
+    '#required' => FALSE,
+    '#rows' => 2,
+  );
+  
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
     '#type' => 'submit',
