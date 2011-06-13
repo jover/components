@@ -390,7 +390,6 @@ function ebb_reference_field_widget_info() { // @TODO: create widget info
     'ebb_reference_embed' => array(
       'label' => t('Embedded'),
       'field types' => array('ebb_reference'),
-      
     ),
   );
 }
