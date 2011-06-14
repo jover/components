@@ -69,7 +69,7 @@ function ebb_entity_info() {
     'module' => 'ebb',
     // Enable the entity API's admin UI.
     'admin ui' => array(
-      'path' => 'admin/structure/entity-building-blocks',
+      'path' => 'admin/structure/entity-building-block-types',
       'file' => 'ebb.admin.inc',
       'controller class' => 'EntityBuildingBlockTypeUIController',
     ),
@@ -270,6 +270,22 @@ function ebb_type_load($type) {
 function ebb_get_types($type_name = NULL) {
   $types = ebb_type_load_multiple(isset($type_name) ? array($type_name) : FALSE);
   return isset($type_name) ? reset($types) : $types;
+}
+
+/**
+ * Returns a list of available Entity Building Block Types.
+ * 
+ * @return
+ *   An array of EntityBuildingBlockType labels, keyed by the type.
+ */
+function ebb_get_types_names() {
+  $results = array();
+  $types = ebb_type_load_multiple(FALSE);
+  foreach ($types as $type) {
+    $results[$type->type] = $type->label;
+  }
+  asort($results);
+  return $results;
 }
 
 /**

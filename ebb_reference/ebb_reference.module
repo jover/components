@@ -34,10 +34,39 @@ function ebb_reference_field_info() {
     'ebb_reference' => array(
       'label' => t('Entity Building Block reference'),
       'description' => t('This field stores the ID of a related Entity Building Block.'),
+      'instance_settings' => array(
+        'referenceable_types' => array(),
+        'view' => array(
+          'view_name' => '',
+          'display_name' => '',
+          'args' => array(),
+        ),
+      ),
+      'settings' => array(),
       'default_widget' => 'ebb_reference_ebbid',
       'default_formatter' => 'ebb_reference_ebb',
+      // Add entity property info
+      'property_type' => 'ebb',
     ),
   );
+}
+
+/**
+ * Implements hook_field_settings_form().
+ */
+function ebb_reference_field_settings_form($field, $instance, $has_data) {
+  $settings = $instance['settings'];
+  
+  $form = array();
+  $form['referenceable_types'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Entity Building Block Types that can be referenced'),
+    '#multiple' => TRUE,
+    '#default_value' => $settings['referenceable_types'],
+    '#options' => ebb_get_types_names(),
+  );
+  
+  return $form;
 }
 
 /**
@@ -206,8 +235,16 @@ function ebb_reference_field_widget_error($element, $error, $form, $form_state) 
   form_error($error_element, $error['message']);
 }
 
+/*********/
+/* OTHER */
+/*********/
 
-
-
-
-
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function ebb_reference_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
+  if ($form['#field']['type'] == 'ebb_reference') {
+    // Set the cardinality of the field settings to UNLIMITED by default.
+    $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
+  }
+}
