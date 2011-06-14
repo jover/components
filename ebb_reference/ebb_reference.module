@@ -13,7 +13,7 @@
  */
 function ebb_reference_help($path, $arg) {
   switch ($path) {
-    case "admin/help#entity-building-blocks-reference":
+    case 'admin/help#entity-building-blocks-reference':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
       $output .= '<p>' . t('The Entity Building Blocks reference module provides a field to which an Entity Building Block can be attached.') . '</p>';
@@ -21,6 +21,10 @@ function ebb_reference_help($path, $arg) {
       break;
   }
 }
+
+/************************/
+/* Field Type API hooks */
+/************************/
 
 /**
  * Implements hook_field_info().
@@ -30,183 +34,39 @@ function ebb_reference_field_info() {
     'ebb_reference' => array(
       'label' => t('Entity Building Block reference'),
       'description' => t('This field stores the ID of a related Entity Building Block.'),
-      'instance_settings' => array(
-        'referenceable_types' => array(),
-        'view' => array(
-          'view_name' => '',
-          'display_name' => '',
-          'args' => array(),
-        ),
-      ),
-      'settings' => array(),
-      'default_widget' => 'default',
-      'default_formatter' => 'ebb_reference_default',
-      // Add entity property info
-      'property_type' => 'ebb',
+      'default_widget' => 'ebb_reference_ebbid',
+      'default_formatter' => 'ebb_reference_ebb',
     ),
   );
 }
 
 /**
- * Implements hook_field_settings_form().
- */
-function ebb_reference_field_settings_form($field, $instance, $has_data) {
-  //$settings = $field['settings'];
-  $settings = $field['instance_settings'];
-  
-  $form = array();
-  $form['referenceable_types'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Entity Building Block Types that can be referenced'),
-    '#multiple' => TRUE,
-    '#default_value' => $settings['referenceable_types'],
-    '#options' => array_map('checkplain', ebb_type_get_names()), // @TODO: ebb_type_get_names()
-  );
-  
-  return $form;
-}
-
-/**
  * Implements hook_field_validate().
  */
-function ebb_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
-  // Extract ebbids to check
-  $ids = array();
-  
-  // Ignore non-numeric ebbid's
+function ebb_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, $errors) {
   foreach ($items as $delta => $item) {
-    if (is_array($item) && !empty($item['ebbid'])) {
-      if (is_numeric($item['ebbid'])) {
-        $ids[] = $item['ebbid'];
-      }
-      else {
-        $errors[$field['field_name']][$langcode][$delta][] = array(
-          'error' => 'invalid_ebbid',
-          'message' => t('%label: invalid input.', array('%label' => $instance['label'])),
-        );
-      }
-    }
-  }
-  
-  if ($ids) {
-    $refs = ebb_reference_potential_references($field, array('ids' => $ids)); // @TODO: ebb_reference_potential_references()
-    foreach ($items as $delta => $item) {
-      if (is_array($item)) {
-        if (!empty($item['ebbid']) && !isset($refs[$item['ebbid']])) {
-          $errors[$field['field_name']][$langcode][$delta][] = array(
-            'error' => 'invalid_ebbid',
-            'message' => t('%label: cannot be referenced.', array('%label' => $instance['label'])),
-          );
-        }
-      }
-    }
-  }
-}
-
-/**
- * Implements hook_field_presave().
- *
- * Support saving field-collection items in @code $item['entity'] @endcode. This
- * may be used to seamlessly create field-collection items during host-entity
- * creation or to save changes to the host entity and its collections at once.
- */
-function ebb_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  foreach ($items as &$item) {
-    // In case the entity has been loaded / created, save it and set the id.
-    if (isset($item['entity'])) {
-      $item['entity']->setHostEntity($entity_type, $entity);
-      $item['entity']->save(TRUE);
-      $item = array('ebbid' => $item['entity']->ebbid);
-    }
-  }
-}
-
-/**
- * Implements hook_field_delete().
- */
-function ebb_reference_field_delete($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  // Delete all referenced Entity Building Block entities
-  $ids = ebb_reference_field_items_to_ids($items);
-  if ($ids) {
-    entity_delete_multiple('ebb', $ids);
-  }
-}
-
-/**
- * Get an array of Entity Building Block IDs stored in the given field items.
- */
-function ebb_reference_field_items_to_ids($items) {
-  $ids = array();
-  foreach ($items as $item) {
-    if (!empty($item['ebbid'])) {
-      $ids[] = $item['ebbid'];
-    }
-  }
-  return $ids;
-}
-
-/**
- * Implements hook_field_prepare_view().
- */
-function ebb_reference_field_prepare_view($entity_type, $entities, $field, $instances, $langcode, $items) {
-  // @TODO: do we need the static ?
-  $fetched_ebbs = &drupal_static(__FUNCTION__, array());
-
-  // Extract ebbids to check
-  $ids = array();
-  foreach ($items as $ebbid => $entity_items) {
-    foreach ($entity_items as $delta => $item) {
-      if (is_array($item)) {
-        // Default to 'not accessible'.
-        $items[$ebbid][$delta]['access'] = FALSE;
-        if (!empty($item['ebbid']) && is_numeric($item['ebbid'])) {
-          $ids[$item['ebbid']] = $item['ebbid'];
-        }
-      }
-    }
-  }
-
-  if ($ids) {
-    // Load information about nids that we haven't already loaded during
-    // this page request.
-    $missing_ids = array_diff($ids, array_keys($fetched_ebbs));
-    if (!empty($missing_ids)) {
-      $query = db_select('ebb', 'e')
-      ->fields('e')
-      ->condition('e.ebbid', $missing_ids);
-      if (!user_access('administer ebbs')) {
-        $query->condition('status', 1);
-      }
-      $fetched_ebbs += $query->execute()->fetchAllAssoc('ebbid');
-    }
-
-    foreach ($items as $id => $entity_items) {
-      foreach ($entity_items as $delta => $item) {
-        if (is_array($item) && !empty($item['ebbid']) && isset($fetched_ebbs[$item['ebbid']])) {
-          $items[$id][$delta]['ebb'] = $fetched_ebbs[$item['ebbid']];
-          $items[$id][$delta]['access'] = TRUE;
-        }
-      }
+    if (!empty($item['ebbid']) && !is_numeric($item['ebbid'])) {
+      $errors[$field['field_name']][$langcode][$delta][] = array(
+        'error' => 'ebb_reference_ebbid_invalid',
+        'message' => t('%label: invalid input.', array('%label' => $instance['label'])),
+      );
     }
   }
 }
 
 /**
  * Implements hook_field_is_empty().
- * 
- * @TODO: compare with field-collection module
- * @see field_collection_field_is_empty()
- * @see field_collection_item_is_empty() 
  */
 function ebb_reference_field_is_empty($item, $field) {
   return empty($item['ebbid']);
 }
 
+/*****************************/
+/* Field Type API: Formatter */
+/*****************************/
+
 /**
  * Implements hook_field_formatter_info().
- * 
- * @TODO: compare with field-collection module
- * @see field_collection_field_formatter_info()
  */
 function ebb_reference_field_formatter_info() {
   return array(
@@ -222,41 +82,13 @@ function ebb_reference_field_formatter_info() {
 }
 
 /**
- * Implements hook_field_formatter_prepare_view().
- */
-function ebb_reference_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, $items, $displays) {
-  // Collect ebbids to load
-  $ebbids = array();
-  foreach ($displays as $id => $display) {
-    if ($display['type'] == 'ebb_reference_ebb') {
-      foreach ($items[$id] as $delta => $item) {
-        if ($item['access']) {
-          $ebbids[$item['ebbid']] = $item['ebbid'];
-        }
-      }
-    }
-  }
-  $ebbs = ebb_load_multiple($ebbids);
-  
-  // Add the loaded Entity Building Blocks to the items
-  foreach ($displays as $id => $display) {
-    if ($display['type'] == 'ebb_reference_ebb') {
-      foreach ($items[$id] as $delta => $item) {
-        if ($item['access']) {
-          $items[$id][$delta]['ebb'] = $ebbs[$item['ebbid']];
-        }
-      }
-    }
-  }
-}
-
-/**
  * Implements hook_field_formatter_settings_form().
  */
 function ebb_reference_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
   $display = $instance['display'][$view_mode];
-  //$settings = $display['settings'];
-  $settings = $display['instance_settings'];
+  $settings = $display['settings'];
+  //$settings = $display['instance_settings'];
+  //$settings = $instance['settings'];
   
   // Only build this information for ebb_reference_ebb displays
   if ($display['type'] !== 'ebb_reference_ebb') {
@@ -287,8 +119,9 @@ function ebb_reference_field_formatter_settings_form($field, $instance, $view_mo
  */
 function ebb_reference_field_formatter_settings_summary($field, $instance, $view_mode) {
   $display = $instance['display'][$view_mode];
-  //$settings = $display['settings'];
-  $settings = $display['instance_settings'];
+  $settings = $display['settings'];
+  //$settings = $display['instance_settings'];
+  //$settings = $instance['settings'];
   
   if ($display['type'] === 'ebb_reference_ebb') {
     $entity_info = entity_get_info('ebb');
@@ -307,70 +140,15 @@ function ebb_reference_field_formatter_settings_summary($field, $instance, $view
  */
 function ebb_reference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $result = array();
-  //$settings = $display['settings'];
-  $settings = $display['instance_settings'];
+  $settings = $display['settings'];
+  //$settings = $display['instance_settings'];
+  //$settings = $instance['settings'];
   
   switch ($display['type']) {
     case 'ebb_reference_ebb':
       $view_mode = $settings['ebb_reference_view_mode'];
-      // To prevent infinite recursion caused by reference cycles, we store
-      // diplayed nodes in a recursion queue.
-      $recursion_queue = &drupal_static(__FUNCTION__, array());
-      
-      // If no 'referencing entity' is set, we are starting a new 'reference
-      // thread' and need to reset the queue.
-      // @todo Bug: $entity->referencing_entity on nodes referenced in a different
-      // thread on the page. E.g: 1 references 1+2 / 2 references 1+2 / visit homepage.
-      // We'd need a more accurate way...
-      if (!isset($entity->referencing_entity)) {
-        $recursion_queue = array();
-      }
-
-      // The recursion queue only needs to track Entity Building Blocks.
-      if ($entity_type == 'ebb') {
-        list($id) = entity_extract_ids($entity_type, $entity);
-        $recursion_queue[$id] = $id;
-      }
-      
-      // Check the recursion queue to determine which Entity Building Blocks should be fully
-      // displayed, and which Entity Building Blocks will only be displayed as a title.
-      $ebbs_display = array();
       foreach ($items as $delta => $item) {
-        if ($item['access'] && !isset($recursion_queue[$item['ebbid']])) {
-          $ebbs_display[$item['ebbid']] = $item['ebb'];
-        }
-      }
-
-      // Load and build the fully displayed Entity Building Blocks.
-      if ($ebbs_display) {
-        foreach ($ebbs_display as $ebbid => $ebb) {
-          $ebbs_display[$ebbid]->referencing_entity = $entity;
-          $ebbs_display[$ebbid]->referencing_field = $field['field_name'];
-        }
-        $ebbs_built = node_view_multiple($ebbs_display, $view_mode); // @TODO: ebb_view_multiple()
-      }
-
-      // Assemble the render array.
-      foreach ($items as $delta => $item) {
-        if ($item['access']) {
-          if (isset($ebbs_display[$item['ebbid']])) {
-            $result[$delta] = $ebbs_built['ebbs'][$item['ebbid']];
-          }
-          else {
-            $ebb = $item['ebb'];
-            $uri = entity_uri('ebb', $ebb);
-            $result[$delta] = array(
-              '#type' => 'link',
-              '#title' => $ebb->title,
-              '#href' => $uri['path'],
-              '#options' => $uri['options'],
-            );
-            if (!$ebb->status) {
-              $result[$delta]['#prefix'] = '<span class="ebb-unpublished">';
-              $result[$delta]['#suffix'] = '</span>';
-            }
-          }
-        }
+        $result[$delta]['#markup'] = '<p>' . $item['ebbid'] . '</p>';
       }
       break;
   }
@@ -378,138 +156,55 @@ function ebb_reference_field_formatter_view($entity_type, $entity, $field, $inst
   return $result;
 }
 
+/**************************/
+/* Field Type API: Widget */
+/**************************/
+
 /**
  * Implements hook_field_widget_info().
  */
-function ebb_reference_field_widget_info() { // @TODO: create widget info
+function ebb_reference_field_widget_info() {
   return array(
     'ebb_reference_ebbid' => array(
       'label' => t('Entity Building Block ID'),
-      'field types' => array('ebb_reference'),
-    ),
-    'ebb_reference_embed' => array(
-      'label' => t('Embedded'),
       'field types' => array('ebb_reference'),
     ),
   );
 }
 
 /**
- * Implements hook_field_widget_info_alter().
- */
-function ebb_reference_field_widget_info_alter(&$info) {
-  $info['options_select']['field types'][] = 'ebb_reference';
-  $info['options_buttons']['field types'][] = 'ebb_reference';
-}
-
-/**
- * Implements hook_field_widget_settings_form().
- */
-/*function ebb_reference_field_widget_settings_form($field, $instance) {
-  $widget   = $instance['widget'];
-  $defaults = field_info_widget_settings($widget['type']);
-  //$settings = array_merge($defaults, $widget['settings']);
-  $settings = array_merge($defaults, $widget['instance_settings']);
-
-  $form = array();
-  if ($widget['type'] == 'node_reference_ebbid') {
-  	$form['size'] = array(
-      '#type'             => 'textfield',
-      '#title'            => t('Size of textfield'),
-      '#default_value'    => $settings['size'],
-      '#element_validate' => array('_element_validate_integer_positive'),
-      '#required'         => TRUE,
-    );
-  }
-  return $form;
-}*/
-
-/**
  * Implements hook_field_widget_form().
  */
 function ebb_reference_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $base = $element;
+  
   switch ($instance['widget']['type']) {
-    case 'node_reference_ebbid':
-      $element += array(
+    case 'ebb_reference_ebbid':
+      $element['ebbid'] = array(
         '#type' => 'textfield',
+        '#title' => t('Entity Building Block ID'),
         '#default_value' => isset($items[$delta]['ebbid']) ? $items[$delta]['ebbid'] : NULL,
-        '#size' => $instance['widget']['instance_settings']['size'],
-        '#maxlength' => 255,
-      );
+      ) + $base;
       break;
   }
-
-  return array('ebbid' => $element);
+  
+  return $element;
 }
 
 /**
  * Implements hook_field_widget_error().
  */
-function ebb_reference_field_widget_error($element, $error, $form, &$form_state) {
-  form_error($element['ebbid'], $error['message']);
-}
-
-/**
- * Theme preprocess function.
- *
- * Allows specific Entity Building Block templates for Entity Building Blocks displayed as values of a
- * ebb_reference field with a specific view mode.
- */
-function ebb_reference_preprocess_ebb(&$vars) {
-  // The 'referencing_field' attribute of the Entity Building Block is added by the
-  // ebb_reference_ebb mode formatter (display referenced Entity Building Block
-  // in a specific view mode).
-  if (!empty($vars['ebb']->referencing_field)) {
-    $ebb = $vars['ebb'];
-    $field = $ebb->referencing_field;
-    $vars['theme_hook_suggestions'][] = 'ebb_reference';
-    $vars['theme_hook_suggestions'][] = 'ebb_reference__' . $field['field_name'];
-    $vars['theme_hook_suggestions'][] = 'ebb_reference__' . $ebb->type;
-    $vars['theme_hook_suggestions'][] = 'ebb_reference__' . $field['field_name'] . '__' . $ebb->type;
+function ebb_reference_field_widget_error($element, $error, $form, $form_state) {
+  switch ($error['error']) {
+    case 'ebb_reference_ebbid_invalid':
+      $error_element = $element;
+      break;
+    default:
+      $error_element = $element;
+      break;
   }
+  form_error($error_element, $error['message']);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
