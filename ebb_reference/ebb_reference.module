@@ -34,15 +34,10 @@ function ebb_reference_field_info() {
     'ebb_reference' => array(
       'label' => t('Entity Building Block reference'),
       'description' => t('This field stores the ID of a related Entity Building Block.'),
-      'instance_settings' => array(
+      'settings' => array( // instance_settings
         'referenceable_types' => array(),
-        'view' => array(
-          'view_name' => '',
-          'display_name' => '',
-          'args' => array(),
-        ),
       ),
-      'settings' => array(),
+      //'settings' => array(),
       'default_widget' => 'ebb_reference_ebbid',
       'default_formatter' => 'ebb_reference_ebb',
       // Add entity property info
@@ -55,7 +50,8 @@ function ebb_reference_field_info() {
  * Implements hook_field_settings_form().
  */
 function ebb_reference_field_settings_form($field, $instance, $has_data) {
-  $settings = $instance['settings'];
+  //$settings = $instance['settings'];
+  $settings = $field['settings'];
   
   $form = array();
   $form['referenceable_types'] = array(
@@ -75,7 +71,7 @@ function ebb_reference_field_settings_form($field, $instance, $has_data) {
 function ebb_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, $errors) {
   foreach ($items as $delta => $item) {
     if (!empty($item['ebbid']) && !is_numeric($item['ebbid'])) {
-      $errors[$field['field_name']][$langcode][$delta][] = array(
+      $errors[$field['type']][$langcode][$delta][] = array(
         'error' => 'ebb_reference_ebbid_invalid',
         'message' => t('%label: invalid input.', array('%label' => $instance['label'])),
       );
@@ -87,7 +83,56 @@ function ebb_reference_field_validate($entity_type, $entity, $field, $instance, 
  * Implements hook_field_is_empty().
  */
 function ebb_reference_field_is_empty($item, $field) {
-  return empty($item['ebbid']);
+  if (!empty($item['ebbid'])) {
+    return FALSE;
+  }
+  elseif (isset($item['entity'])) {
+    return ebb_reference_ebb_is_empty($item['entity']);
+  }
+  return TRUE;
+}
+
+/**
+ * Determines whether an Entity Building Block entity is empty based on the fields.
+ * 
+ * @param EntityBuildingBlock $ebb
+ */
+function ebb_reference_ebb_is_empty(EntityBuildingBlock $ebb) {
+  $instances = field_info_instances('ebb', $ebb->type);
+  
+  foreach ($instances as $instance) {
+    $field_name = $instance['field_name'];
+    $field = field_info_field($field_name);
+    
+    // Determine the list of languages to iterate on.
+    $languages = field_available_languages('ebb', $field);
+    
+    foreach ($languages as $langcode) {
+      if (!empty($item->$field_name[$langcode])) {
+        // If at least one field is not empty; the EntityBuidingBlock is not empty.
+        foreach ($item->$field_name[$langcode] as $field_item) {
+          if (!module_invoke($field['module'], 'field_is_empty', $field_item, $field)) {
+            return FALSE;
+          }
+        }
+      }
+    }
+  }
+  return TRUE;
+}
+
+/**
+ * Implements hook_field_presave().
+ */
+function ebb_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  debug($items, NULL, TRUE);
+  foreach ($items as &$item) {
+    // In case the entity has been loaded / created, save it and set the id.
+    if (isset($item['entity'])) {
+      $item['entity']->save(TRUE);
+      $item = array('ebbid' => $item['entity']->ebbid);
+    }
+  }
 }
 
 /*****************************/
@@ -198,6 +243,10 @@ function ebb_reference_field_widget_info() {
       'label' => t('Entity Building Block ID'),
       'field types' => array('ebb_reference'),
     ),
+    'ebb_reference_embed' => array(
+      'label' => t('Entity Building Block Embedded'),
+      'field types' => array('ebb_reference'),
+    ),
   );
 }
 
@@ -215,9 +264,127 @@ function ebb_reference_field_widget_form(&$form, &$form_state, $field, $instance
         '#default_value' => isset($items[$delta]['ebbid']) ? $items[$delta]['ebbid'] : NULL,
       ) + $base;
       break;
+    case 'ebb_reference_embed':
+      $field_parents = $element['#field_parents'];
+      $field_name = $element['#field_name'];
+      $language = $element['#language'];
+      
+      // @TODO remove hardcoded type, provide option of field refereceable types
+      $ebb_type = 'header'; // HARDCODED
+      
+      $ebb = ebb_reference_field_get_entity($item[$delta], $ebb_type);
+      
+      // Nest the Entity Building Block entity form in a dedicated parent space,
+      // by appending [field_name, langcode, delta] to the current parent space.
+      // That way the form values of the Entity Building Block item are separated.
+      $parents = array_merge($field_parents, array($field_name, $language, $delta));
+      
+      $element += array(
+        '#element_validate' => array('ebb_reference_field_widget_embed_validate'),
+        '#parents' => $parents,
+      );
+      
+      // Put our entity in the form state, so FAPI callbacks can access it.
+      $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
+      $field_state['entity'][$delta] = $ebb;
+      field_form_set_state($field_parents, $field_name, $language, $form_state, $field_state);
+      
+      field_attach_form('ebb', $ebb, $element, $form_state, $language);
+      
+      if (empty($element['#required'])) {
+        $element['#after_build'][] = 'ebb_reference_field_widget_embed_delay_required_validation';
+      }
+      
+      break;
   }
   
   return $element;
+}
+
+/**
+ * FAPI #after_build of an individual Entity Building Block element to delay the validation of #required.
+ */
+function ebb_reference_field_widget_embed_delay_required_validation(&$element, &$form_state) {
+  // If the process_input flag is set, the form and its input is going to be
+  // validated. Prevent #required (sub)fields from throwing errors while
+  // their non-#required Entity Building Block item is empty.
+  if ($form_state['process_input']) {
+    _ebb_reference_collect_required_elements($element, $element['#ebb_reference_required_elements']);
+  }
+  return $element;
+}
+
+function _ebb_reference_collect_required_elements(&$element, &$required_elements) {
+  // Recurse through all children.
+  foreach (element_children($element) as $key) {
+    if (isset($element[$key]) && $element[$key]) {
+      _ebb_reference_collect_required_elements($element[$key], $required_elements);
+    }
+  }
+  if (!empty($element['#required'])) {
+    $element['#required'] = FALSE;
+    $required_elements[] = &$element;
+    $element += array('#pre_render' => array());
+    array_unshift($element['#pre_render'], 'ebb_reference_field_widget_render_required');
+  }
+}
+
+/**
+ * #pre_render callback that ensures the element is rendered as being required.
+ */
+function ebb_reference_field_widget_render_required($element) {
+  $element['#required'] = TRUE;
+  return $element;
+}
+
+/**
+ * FAPI validation of an individual field-collection element.
+ */
+function ebb_reference_field_widget_embed_validate($element, &$form_state, $complete_form) {
+  $instance = field_widget_instance($element, $form_state);
+  $field = field_widget_field($element, $form_state);
+  $field_parents = $element['#field_parents'];
+  $field_name = $element['#field_name'];
+  $language = $element['#language'];
+
+  $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
+  $ebb = $field_state['entity'][$element['#delta']];
+  
+  // Attach field API validation of the embedded form.
+  field_attach_form_validate('ebb', $ebb, $element, $form_state);
+  
+  // Now validate required elements if the entity is not empty.
+  if (!ebb_reference_ebb_is_empty($ebb) && !empty($element['#ebb_reference_required_elements'])) {
+    foreach ($element['#ebb_reference_required_elements'] as &$elements) {
+      
+      // Copied from _form_validate().
+      if (isset($elements['#needs_validation'])) {
+        $is_empty_multiple = (!count($elements['#value']));
+        $is_empty_string = (is_string($elements['#value']) && drupal_strlen(trim($elements['#value'])) == 0);
+        $is_empty_value = ($elements['#value'] === 0);
+        if ($is_empty_multiple || $is_empty_string || $is_empty_value) {
+          if (isset($elements['#title'])) {
+            form_error($elements, t('!name field is required.', array('!name' => $elements['#title'])));
+          }
+          else {
+            form_error($elements);
+          }
+        }
+      }
+    }
+  }
+
+  // Only if the form is being submitted, finish the collection entity and
+  // prepare it for saving.
+  if ($form_state['submitted'] && !form_get_errors()) {
+
+    field_attach_submit('ebb', $ebb, $element, $form_state);
+    // Put the Entity Building Block item in $item['entity'], so it is saved with
+    // the host entity via hook_field_presave() / field API if it is not empty.
+    // @see ebb_reference_field_presave()
+    $item['entity'] = $ebb;
+    form_set_value($element, $item, $form_state);
+  }
 }
 
 /**
@@ -233,6 +400,22 @@ function ebb_reference_field_widget_error($element, $error, $form, $form_state) 
       break;
   }
   form_error($error_element, $error['message']);
+}
+
+/**
+ * Gets an Entity Building Block
+ * 
+ * @return
+ *   An Entity Building Block object or FALSE.
+ */
+function ebb_reference_field_get_entity(&$item, $ebb_type = NULL) {
+  if (isset($item['ebbid'])) {
+    return ebb_load($item['ebbid']);
+  }
+  elseif (!isset($item['entity']) && isset($ebb_type)) {
+    $item['entity'] = ebb_create(array('type' => $ebb_type));
+  }
+  return isset($item['entity']) ? $item['entity'] : FALSE;
 }
 
 /*********/
