@@ -98,12 +98,12 @@ function ebb_type_form_submit(&$form, &$form_state) {
   $ebb_type = entity_ui_form_submit_build_entity($form, $form_state);
   // Save and go back.
   $ebb_type->save();
-  $form_state['redirect'] = 'admin/structure/entity-building-blocks';
+  $form_state['redirect'] = 'admin/structure/entity-building-block-tpes';
 }
 
 /**
  * Form API submit callback for the delete button.
  */
 function ebb_type_form_submit_delete(&$form, &$form_state) {
-  $form_state['redirect'] = 'admin/structure/entity-building-blocks/manage/' . $form_state['ebb_type']->type . '/delete';
+  $form_state['redirect'] = 'admin/structure/entity-building-block-types/manage/' . $form_state['ebb_type']->type . '/delete';
 }

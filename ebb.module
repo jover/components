@@ -89,8 +89,8 @@ function ebb_entity_info_alter(&$entity_info) {
     $entity_info['ebb']['bundles'][$type] = array(
       'label' => $info->label,
       'admin' => array(
-        'path' => 'admin/structure/entity-building-blocks/manage/%ebb_type',
-        'real path' => 'admin/structure/entity-building-blocks/manage/' . $type,
+        'path' => 'admin/structure/entity-building-block-types/manage/%ebb_type',
+        'real path' => 'admin/structure/entity-building-block-types/manage/' . $type,
         'bundle argument' => 4,
         'access arguments' => array('administer ebb types'),
       ),
