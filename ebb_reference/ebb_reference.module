@@ -125,7 +125,6 @@ function ebb_reference_ebb_is_empty(EntityBuildingBlock $ebb) {
  * Implements hook_field_presave().
  */
 function ebb_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  debug($items, NULL, TRUE);
   foreach ($items as &$item) {
     // In case the entity has been loaded / created, save it and set the id.
     if (isset($item['entity'])) {

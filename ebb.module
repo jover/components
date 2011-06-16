@@ -10,13 +10,30 @@
  */
 function ebb_help($path, $arg) {
   switch ($path) {
-    case "admin/help#entity-building-blocks":
+    case 'admin/help#entity-building-blocks':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
       // @TODO: write help documentation
       return $output;
       break;
   }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function ebb_menu() {
+  $items = array();
+  // @TODO: title callback with type name
+  // @TODO: access arguments 'create ebb'
+  $items['ebb/add/%'] = array(
+    'title' => 'Add Entity Building Block',
+    'page callback' => 'ebb_add',
+    'page arguments' => array(2),
+    'access arguments' => array('administer ebbs'),
+  );
+
+  return $items;
 }
 
 /**
@@ -220,6 +237,49 @@ function ebb_access($op, $entity_type) {
   }
 }
 
+// @TODO: security concerning the type and error message
+function ebb_add($type) {
+  $ebb = ebb_create(array('type' => $type));
+  
+  return drupal_get_form('ebb_add_form', $ebb);
+}
+
+function ebb_add_form($form, &$form_state, $ebb) {
+  $form['type'] = array(
+    '#type' => 'hidden',
+    '#default_value' => $ebb->type,
+  );
+  
+  $form['status'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Published'),
+    '#default_value' => $ebb->status,
+    '#weight' => 9999,
+  );
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#weight' => 10000,
+  );
+  
+  field_attach_form('ebb', $ebb, $form, $form_state);
+  
+  return $form;
+}
+
+function ebb_add_form_validate($form, &$form_state) {
+  $ebb = ebb_create($form_state['values']);
+  field_attach_form_validate('ebb', $ebb, $form, $form_state);
+}
+
+function ebb_add_form_submit($form, &$form_state) {
+  $ebb = ebb_create($form_state['values']);
+  field_attach_submit('ebb', $ebb, $form, $form_state);
+  $ebb = ebb_save($ebb);
+  $form_state['redirect'] = $ebb->defaultUri();
+}
+
 /**********************/
 /* EBB_TYPE functions */
 /**********************/
@@ -361,13 +421,17 @@ function ebb_theme() {
  */
 class EntityBuildingBlock extends Entity {
   
-  /*public $ebbid;
+  /*public $ebbid;*/
   public $type;
-  public $status;*/
+  public $status;
   
   public function __construct($values = array()) {
     if (isset($values['type']) && is_object($values['type'])) {
       $values['type'] = $values['type']->type;
+    }
+    
+    if (!isset($values['status'])) {
+      $values['status'] = TRUE;
     }
     
     parent::__construct($values, 'ebb');
@@ -382,6 +446,14 @@ class EntityBuildingBlock extends Entity {
     return ebb_type_load($this->type);
   }
   
+  public function defaultUri() {
+    return array('path' => 'ebb/' . $this->identifier());
+  }
+  
+  public function save() {
+    parent::save();
+  }
+  
   public function buildContent($view_mode = 'full', $langcode = NULL) {
     $content = array();
     // Assume newly create objects are still empty.
@@ -389,10 +461,6 @@ class EntityBuildingBlock extends Entity {
       $content['empty']['#markup'] = '<em class="ebb-no-data">' . t('There is no Entity Building Block data available yet.') . '</em>';
     }
     return entity_get_controller($this->entityType)->buildContent($this, $view_mode, $langcode, $content); 
-  }
-  
-  public function save() {
-    parent::save();
   }
   
 }
