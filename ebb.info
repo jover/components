@@ -3,6 +3,7 @@ description = Entity Building Blocks
 core = 7.x
 dependencies[] = entity
 files[] = ebb.admin.inc
+files[] = ebb.forms.inc
 files[] = ebb.info.inc
 files[] = ebb.install
 files[] = ebb.module
