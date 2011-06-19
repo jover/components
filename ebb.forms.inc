@@ -18,8 +18,7 @@ function ebb_form($form, &$form_state, $ebb) {
     '#weight' => 9999,
   );
   
-  $form['actions'] = array();
-  $form['actions']['#weight'] = 1000;
+  $form['actions'] = array('#type' => 'actions', '#weight' => 1000);
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save'),
@@ -57,6 +56,7 @@ function ebb_form_submit($form, &$form_state) {
   // Save the Entity Building Block
   ebb_save($ebb);
   
+  drupal_set_message(t('The changes have been saved.'));
   $form_state['redirect'] = $ebb->defaultUri();
 }
 
@@ -91,7 +91,7 @@ function ebb_form_delete_confirm_submit($form, &$form_state) {
     $ebb = ebb_load($form_state['values']['ebbid']);
     ebb_delete($ebb->ebbid);
     watchdog('ebb', 'EBB: deleted ebbid=%ebbid', array('%ebbid' => $ebb->ebbid));
-    drupal_set_message(t('The %type Entity Building Block has been deleted', array('%type' => ebb_type_get_label_by_type($ebb->type))));
+    drupal_set_message(t('The %type Entity Building Block has been deleted.', array('%type' => ebb_type_get_label_by_type($ebb->type))));
   }
   
   $form_state['redirect'] = '<front>';

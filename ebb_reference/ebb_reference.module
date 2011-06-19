@@ -221,7 +221,8 @@ function ebb_reference_field_formatter_view($entity_type, $entity, $field, $inst
     case 'ebb_reference_ebb':
       $view_mode = $settings['ebb_reference_view_mode'];
       foreach ($items as $delta => $item) {
-        $result[$delta]['#markup'] = '<p>' . $item['ebbid'] . '</p>';
+        // @TODO: drupal_render, is this a best practice?
+        $result[$delta]['#markup'] = drupal_render(ebb_view(ebb_load($item['ebbid'])));
       }
       break;
   }
