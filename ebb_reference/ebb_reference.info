@@ -1,9 +1,0 @@
-name = Entity Building Block Reference
-description = Defines a field type for referencing an Entity Building Block from another entity.
-package = Fields
-core = 7.x
-dependencies[] = ebb
-dependencies[] = field
-dependencies[] = options
-files[] = ebb_reference.install
-files[] = ebb_reference.module

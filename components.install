@@ -2,24 +2,24 @@
 
 /**
  * @file
- * Install, update and uninstall functions for the Entity Building Blocks module.
+ * Install, update and uninstall functions for the components module.
  */
 
 /**
  * Implements hook_schema().
  */
-function ebb_schema() {
-  $schema['ebb'] = array(
+function components_schema() {
+  $schema['component'] = array(
     'description' => 'The base table for Entity Building Blocks.',
     'fields' => array(
-      'ebbid' => array(
+      'cid' => array(
         'description' => 'The primary identifier for an Entity Building Block.',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'type' => array(
-        'description' => 'The {ebb_type}.type of this Entity Building Block.',
+        'description' => 'The {component_type}.type of this Entity Building Block.',
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
@@ -35,15 +35,15 @@ function ebb_schema() {
     ),
     'foreign keys' => array(
       'type' => array(
-        'table' => 'ebb_type',
+        'table' => 'component_type',
         'columns' => array('type' => 'type'),
       ),
     ),
-    'primary key' => array('ebbid'),
+    'primary key' => array('cid'),
   );
   
-  $schema['ebb_type'] = array(
-    'description' => 'Stores information about all defined {ebb} types.',
+  $schema['component_type'] = array(
+    'description' => 'Stores information about all defined {component} types.',
     'fields' => array(
       'id' => array( // Required for internal use of the EntityAPI
         'description' => 'The primary identifier for an Entity Building Block Type.',
@@ -74,7 +74,7 @@ function ebb_schema() {
         'translatable' => TRUE,
       ),
       'help' => array(
-        'description' => 'Help information shown to the user when creating a {ebb} of this type.',
+        'description' => 'Help information shown to the user when creating a {component} of this type.',
         'type' => 'text',
         'not null' => FALSE,
         'size' => 'medium',
@@ -94,14 +94,14 @@ function ebb_schema() {
 /**
  * Implements hook_install().
  */
-function ebb_install() {
+function components_install() {
   // Create all the fields
-  foreach (_ebb_type_installed_fields() as $field) {
+  foreach (_components_type_installed_fields() as $field) {
     field_create_field($field);
   }
   
   // Create all the field instances
-  foreach (_ebb_type_installed_instances() as $instance) {
+  foreach (_components_type_installed_instances() as $instance) {
     field_create_instance($instance);
   }
 }
@@ -109,16 +109,16 @@ function ebb_install() {
 /**
  * Implements hook_uninstall().
  */
-function ebb_uninstall() {
+function components_uninstall() {
   // Delete all field instances defined by this module, their data and the field itself
-  foreach (array_keys(_ebb_type_installed_fields()) as $field_name) {
+  foreach (array_keys(_components_type_installed_fields()) as $field_name) {
     field_delete_field($field_name);
   }
   
   // Delete all field instances attached to the entity types defined by this module
   $instances = array();
-  $instances = array_merge($instances, field_info_instances('ebb'));
-  $instances = array_merge($instances, field_info_instances('ebb_type'));
+  $instances = array_merge($instances, field_info_instances('component'));
+  $instances = array_merge($instances, field_info_instances('component_type'));
   foreach ($intances as $instance_name => $instance) {
     field_delete_instance($instance);
   }
@@ -130,15 +130,15 @@ function ebb_uninstall() {
 /**
  * Return a structured array defining the fields created by this module
  */
-function _ebb_type_installed_fields() {
+function _components_type_installed_fields() {
   $fields = array();
   
-  // Create an image field named "Sample Image", enabled for the 'ebb_type' entity.
-  $fields['field_ebb_type_image'] = array(
-    'field_name' => 'field_ebb_type_image',
+  // Create an image field named "Sample Image", enabled for the 'component_type' entity.
+  $fields['field_component_type_image'] = array(
+    'field_name' => 'field_component_type_image',
     'label' => t('Sample Image'),
     'type' => 'image',
-    'entity_types' => array('ebb_type'),
+    'entity_types' => array('component_type'),
     'cardinality' => 1,
     'translatable' => TRUE,
     'locked' => TRUE,
@@ -159,15 +159,15 @@ function _ebb_type_installed_fields() {
 /**
  * Return a structured array defining the field instances created by this module
  */
-function _ebb_type_installed_instances() {
+function _components_type_installed_instances() {
   $instances = array();
   
   // Create an instance of the image field "Sample Image"
-  $instances['field_ebb_type_image'] = array(
-    'field_name' => 'field_ebb_type_image',
+  $instances['field_component_type_image'] = array(
+    'field_name' => 'field_component_type_image',
     'label' => t('Sample Image'),
-    'entity_type' => 'ebb_type',
-    'bundle' => 'ebb_type',
+    'entity_type' => 'component_type',
+    'bundle' => 'component_type',
     'description' => t('Upload a sample image for this Entity Building Block Type.'),
     'required' => FALSE,
     'settings' => array(

@@ -2,13 +2,13 @@
 
 /**
  * @file
- * Provides Entity metadate integration.
+ * Provides Entity metadata integration.
  */
 
 /**
  * Extend the defaults.
  */
-class EntityBuildingBlocksMetadataController extends EntityDefaultMetadataController {
+class ComponentsMetadataController extends EntityDefaultMetadataController {
   
   public function entityPropertyInfo() {
     $info = parent::entityPropertyInfo();
@@ -16,17 +16,17 @@ class EntityBuildingBlocksMetadataController extends EntityDefaultMetadataContro
     
     $properties['label'] = array(
       'name' => t('Label'),
-      'description' => t('The Entity Building Block label.'),
+      'description' => t('The component label.'),
       'getter callback' => 'entity_property_getter_method',
     );
     
     $properties['type'] = array(
-      'type' => 'ebb_type',
+      'type' => 'component_type',
       'getter callback' => 'entity_property_getter_method',
       'setter callback' => 'entity_property_verbatim_set',
-      'setter permission' => 'administer ebbs',
+      'setter permission' => 'administer components',
       'required' => TRUE,
-      'description' => t('The Entity Building Block Type.'),
+      'description' => t('The component type.'),
     ) + $properties['type'];
   
     return $info;

@@ -1,3 +1,5 @@
-Entity Building Blocks
+The Components module provides components as entities, and thus are fieldable.
+Using the attached Component References module, you can add components to any other entity.
 
-Entity Building Blocks is a Drupal 7 module.
+Dependencies:
+- Entity API

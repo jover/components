@@ -1,0 +1,575 @@
+<?php
+
+include_once 'components.forms.inc'; // is this necessary?
+
+/**
+ * @file
+ * Module file for the components module.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function components_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#components':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      // @TODO: write help documentation
+      return $output;
+      break;
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function components_menu() {
+  $items = array();
+  // @TODO: title callback with type name
+  // @TODO: access arguments 'create component'
+  $items['component/add/%'] = array(
+    'title' => 'Add component',
+    'page callback' => 'component_add',
+    'page arguments' => array(2),
+    'access arguments' => array('administer components'),
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+  
+  /*$items['component/%component/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => '',
+    'page arguments' => array(2),
+    'access arguments' => array('administer components'),
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );*/
+  
+  $items['component/%component/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('component_form_delete_confirm', 1),
+    'access arguments' => array('administer components'),
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_INLINE,
+  );
+  
+  $items['component/%component'] = array(
+    'title' => 'View',
+    'page callback' => 'component_view',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+function components_entity_info() {
+  $entity_info = array();
+  
+  $entity_info['component'] = array(
+    'label' => t('Component'),
+    'entity class' => 'Component',
+    'controller class' => 'EntityAPIController',
+    'base table' => 'component',
+    'fieldable' => TRUE,
+    'view modes' => array(
+      'full' => array(
+        'label' => t('Full content'),
+        'custom settings' => FALSE,
+      ),
+    ),
+    'entity keys' => array(
+      'id' => 'cid',
+      'bundle' => 'type',
+    ),
+    'bundles' => array(),
+    'bundle keys' => array(
+      'bundle' => 'type',
+    ),
+    'label callback' => 'entity_class_label',
+    'uri callback' => 'entity_class_uri',
+    'access callback' => 'component_access',
+    'module' => 'components',
+    'metadata controller class' => 'ComponentsMetadataController',
+  );
+  
+  $entity_info['component_type'] = array(
+    'label' => t('Component type'),
+    'entity class' => 'ComponentType',
+    'controller class' => 'EntityAPIController',
+    'base table' => 'component_type',
+    'fieldable' => TRUE,
+    'bundle of' => 'component',
+    'exportable' => TRUE,
+    'entity keys' => array(
+      'id' => 'id',
+      'name' => 'type',
+      'label' => 'label',
+    ),
+    'access callback' => 'component_type_access',
+    'module' => 'components',
+    // Enable the entity API's admin UI.
+    'admin ui' => array(
+      'path' => 'admin/structure/componenttypes',
+      'file' => 'components.admin.inc',
+      'controller class' => 'ComponentTypeUIController',
+    ),
+  );
+  
+  return $entity_info;
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ *
+ * Use this hook to specify profile bundles to avoid a recursion, as loading
+ * the profile types needs the entity info too.
+ */
+function components_entity_info_alter(&$entity_info) {
+  foreach (components_get_types() as $type => $info) {
+    $entity_info['component']['bundles'][$type] = array(
+      'label' => $info->label,
+      'admin' => array(
+        'path' => 'admin/structure/componenttypes/manage/%component_type',
+        'real path' => 'admin/structure/componenttypes/manage/' . $type,
+        'bundle argument' => 4,
+        'access arguments' => array('administer component types'),
+      ),
+    );
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function components_permission() {
+   $permissions = array(
+    'administer components' => array(
+      'title' => t('Administer components'),
+      'description' => t('Edit and view all components.')
+    ),
+    'administer component types' => array(
+      'title' => t('Administer component types'), 
+      'description' => t('Create and delete fields on components, and set their permissions.'),
+    ),
+  );
+  
+  // Generate per component type permissions.
+  foreach (components_get_types() as $type) {
+    $type_name = check_plain($type->type);
+    $permissions += array(
+      'edit any ' . $type_name . ' component' => array(
+        'title' => t('%type_name: Edit any component', array('%type_name' => $type->label)),
+      ),
+      'view any ' . $type_name . ' component' => array(
+        'title' => t('%type_name: View any component', array('%type_name' => $type->label)),
+      ),
+    );
+  }
+  
+  return $permissions;
+}
+
+/***********************/
+/* COMPONENT functions */
+/***********************/
+
+/**
+ * Creates a new component object.
+ * 
+ * @param array $values
+ */
+function component_create(array $values) {
+  return new Component($values);
+}
+
+/**
+ * Saves a component object.
+ * 
+ * @param Component $component
+ *   A component object.
+ */
+function component_save(Component $component) {
+  return $component->save();
+}
+
+/**
+ * Loads a component object.
+ * 
+ * @param integer $cid
+ *   Integer specifying the component ID.
+ * @param boolean $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return Component
+ *   A component object or FALSE if it cannot be found.
+ * 
+ * @see component_load_multiple()
+ */
+function component_load($cid, $reset = FALSE) {
+  $ids = isset($cid) ? array($cid) : array();
+  $results = component_load_multiple($ids, array(), $reset);
+  return $results ? reset($results) : FALSE;
+}
+
+/**
+ * Loads multiple component objects.
+ * 
+ * @param array $cids
+ *   An array of component IDs.
+ * @param array $conditions
+ *   An array of conditions to match against the {component} table.
+ * @param boolean $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return Component[]
+ *   An array of component objects.
+ * 
+ * @see entity_load()
+ * @see component_load()
+ */
+function component_load_multiple($cids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('component', $cids, $conditions, $reset);
+}
+
+/**
+ * Deletes a component object.
+ * 
+ * @param integer $cid
+ *   Integer specifying the component ID.
+ * 
+ * @see component_delete_multiple()
+ */
+function component_delete($cid) {
+  return component_delete_multiple(array($cid));
+}
+
+/**
+ * Deletes multiple component objects.
+ * 
+ * @param array $cids
+ *   An array of component IDs.
+ */
+function component_delete_multiple($cids = array()) {
+  entity_get_controller('component')->delete($cids);
+}
+
+/**
+ * Access callback for the component entity.
+ */
+function component_access($op, $entity_type) {
+  if (user_access('administer components')) {
+    return TRUE;
+  }
+}
+
+// @TODO: security concerning the type and error message
+function component_add($type) {
+  drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
+  return drupal_get_form('component_form', component_create(array('type' => $type)));
+}
+
+/**
+ * Generate an array for rendering the given component.
+ * 
+ * @param $component
+ *   A component object.
+ * @param $view_mode
+ *   View mode, e.g. 'full', 'teaser'...
+ * @param $langcode
+ *   (optional) A language code to use for rendering. Defaults to the global
+ *   content language of the current request.
+ * 
+ * @return
+ *   An array as expected by drupal_render().
+ */
+function component_view($component, $view_mode = 'full', $langcode = NULL) {
+  if (!isset($langcode)) {
+    $langcode = $GLOBALS['language_content']->language;
+  }
+  
+  $build = $component->buildContent($view_mode, $langcode);
+  
+  $build += array(
+    '#theme' => 'component',
+    '#component' => $component,
+    '#view_mode' => $view_mode,
+    '#language' => $langcode,
+  );
+  
+  // Allow modules to modify the structured component.
+  drupal_alter(array('component_view', 'entity_view'), $build, $component->entityType());
+  
+  return $build;
+}
+
+/**
+ * Process variables for component.tpl.php
+ * 
+ * The default component.tpl.php is located
+ * inside "MODULE-PATH/theme/component.tpl.php".
+ * Look in there for the full list of variables.
+ * 
+ * The $vars array contains the following arguments:
+ * - $component
+ * - $view_mode
+ * 
+ * @see component.tpl.php
+ */
+function template_preprocess_component(&$vars) {
+  $elements = &$vars['elements'];
+  $component = $elements['#component'];
+  
+  $vars['component'] = $component;
+  $vars['view_mode'] = $elements['#view_mode'];
+  
+  // Flatten the component's member fields
+  $vars = array_merge((array) $component, $vars);
+  
+  // Helpful $content variable for templates
+  foreach (element_children($elements) as $key) {
+    $vars['content'][$key] = $elements[$key];
+  }
+  
+  // Make the field variables available with the appropriate language
+  field_attach_preprocess('component', $component, $vars['content'], $vars);
+  
+  // Gather classes
+  $vars['classes_array'][] = drupal_html_class('component-' . $component->type);
+  if (!$vars['status']) {
+    $vars['classes_array'][] = 'component-unpublished';
+  }
+  
+  // Clean up name so there are no underscores
+  $vars['theme_hook_suggestions'][] = 'component__' . $component->type;
+  $vars['theme_hook_suggestions'][] = 'component__' . $component->cid;
+}
+
+/****************************/
+/* COMPONENT_TYPE functions */
+/****************************/
+
+/**
+ * Creates a new component type object.
+ * 
+ * @param array $values
+ */
+function component_type_create(array $values) {
+  return new ComponentType($values);
+}
+
+/**
+ * Saves a component type object.
+ * 
+ * @param ComponentType $component_type
+ *   A component type object.
+ */
+function component_type_save(ComponentType $component_type) {
+  return $component_type->save();
+}
+
+/**
+ * Loads a component type object.
+ * 
+ * @param string $type
+ *   The machine-readable name of a component type to load.
+ * @return ComponentType
+ * 	 A component type object or FALSE if it cannot be found.
+ * 
+ * @see component_type_load_multiple()
+ */
+function component_type_load($type) {
+  $types = isset($type) ? array($type) : array();
+  $results = component_type_load_multiple($types);
+  return $results ? reset($results) : FALSE;
+}
+// @TODO: component_type_load() <- difference -> components_get_types()
+/**
+ * Gets an array of all component types.
+ * 
+ * @param string $type_name
+ *   If set, the type with the given name is returned.
+ * @return ComponentType[]
+ *   Depending wheter $type_name isset, an array of component types or a single one.
+ */
+function components_get_types($type_name = NULL) {
+  $types = component_type_load_multiple(isset($type_name) ? array($type_name) : FALSE);
+  return isset($type_name) ? reset($types) : $types;
+}
+
+/**
+ * Returns a list of available component types.
+ * 
+ * @return
+ *   An array of component type labels, keyed by the type.
+ */
+function components_get_types_names() {
+  $results = array();
+  $types = component_type_load_multiple(FALSE);
+  foreach ($types as $type) {
+    $results[$type->type] = $type->label;
+  }
+  asort($results);
+  return $results;
+}
+
+/**
+ * Loads multiple component type objects.
+ * 
+ * @param array $types
+ *   An array of component types.
+ * @param array $conditions
+ *   An array of conditions to match against the {component_type} table.
+ * @param boolean $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return ComponentType[]
+ *   An array of component type objects.
+ */
+function component_type_load_multiple($types = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('component_type', $types, $conditions, $reset);
+}
+
+/**
+ * Deletes a component type object.
+ * 
+ * @param string $type
+ *   The type of the component type.
+ * 
+ * @see component_type_delete_multiple()
+ */
+function component_type_delete($type) {
+  return component_delete_multiple(array($type));
+}
+
+/**
+ * Deletes multiple component type objects.
+ * 
+ * @param array $cids
+ *   An array of component type types.
+ */
+function component_type_delete_multiple($types = array()) {
+  entity_get_controller('component_type')->delete($types);
+}
+
+/**
+ * Access callback for the component type entity.
+ */
+/*function component_type_access($op, $entity_type) {
+  if (user_access('administer component types')) {
+    return TRUE;
+  }
+}*/
+function component_type_access($op, $type = NULL, $account = NULL) {
+  return user_access('administer component types', $account);
+}
+
+/**
+ * Return the label of a component type by type.
+ * 
+ * @param string $type
+ *   The type of a component type.
+ * @return
+ *   The label of a component type or FALSE if it cannot be found.
+ */
+function component_type_get_label_by_type($type) {
+  $component_type = component_type_load($type);
+  
+  return ($component_type) ? $component_type->label : FALSE;
+}
+
+/*********/
+/* THEME */
+/*********/
+
+function components_theme() {
+  return array(
+    'component' => array(
+      'render element' => 'elements',
+      'path' => drupal_get_path('module', 'components') . '/theme',
+      'template' => 'component',
+    ),
+  );
+}
+
+/***********/
+/* CLASSES */
+/***********/
+
+/**
+ * Component class
+ */
+class Component extends Entity {
+  
+  /*public $cid;*/
+  public $type;
+  public $status;
+  
+  public function __construct($values = array()) {
+    if (isset($values['type']) && is_object($values['type'])) {
+      $values['type'] = $values['type']->type;
+    }
+    
+    if (!isset($values['status'])) {
+      $values['status'] = TRUE;
+    }
+    
+    parent::__construct($values, 'component');
+  }
+  
+  /**
+   * Returns the associated component type object.
+   * 
+   * @return ComponentType
+   */
+  public function type() {
+    return component_type_load($this->type);
+  }
+  
+  public function defaultUri() {
+    $cid = $this->internalIdentifier();
+    return ($cid) ? array('path' => 'component/' . $this->internalIdentifier()) : NULL;
+  }
+  
+  public function save() {
+    parent::save();
+  }
+  
+  public function buildContent($view_mode = 'full', $langcode = NULL) {
+    $content = array();
+    // Assume newly create objects are still empty.
+    if (!empty($this->is_new)) {
+      $content['empty']['#markup'] = '<em class="component-no-data">' . t('There is no component data available yet.') . '</em>';
+    }
+    return entity_get_controller($this->entityType)->buildContent($this, $view_mode, $langcode, $content); 
+  }
+  
+}
+
+/**
+ * ComponentType class
+ */
+class ComponentType extends Entity {
+  
+  public $type;
+  public $label;
+  public $description;
+  public $help;
+  
+  public function __construct($values = array()) {
+    parent::__construct($values, 'component_type');
+  }
+  
+  /**
+   * Returns whether the component type is locked, thus may not be deleted or renamed.
+   *
+   * Component types provided in code are automatically treated as locked, as well
+   * as any fixed component type.
+   */
+  public function isLocked() {
+    return isset($this->status) && empty($this->is_new) && (($this->status & ENTITY_IN_CODE) || ($this->status & ENTITY_FIXED));
+  }
+  
+}

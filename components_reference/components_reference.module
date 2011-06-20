@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Defines a field type for referencing an Entity Building Block from another entity.
+ * Defines a field type for referencing a component from another entity.
  * 
  * This module is based on the Node Reference module (part of the References module):
  * @link http://drupal.org/project/references
@@ -11,12 +11,12 @@
 /**
  * Implements hook_help().
  */
-function ebb_reference_help($path, $arg) {
+function components_reference_help($path, $arg) {
   switch ($path) {
-    case 'admin/help#entity-building-blocks-reference':
+    case 'admin/help#components-reference':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Entity Building Blocks reference module provides a field to which an Entity Building Block can be attached.') . '</p>';
+      $output .= '<p>' . t('The Components Reference module provides a field to which a component can be attached.') . '</p>';
       return $output;
       break;
   }
@@ -29,19 +29,19 @@ function ebb_reference_help($path, $arg) {
 /**
  * Implements hook_field_info().
  */
-function ebb_reference_field_info() {
+function components_reference_field_info() {
   return array(
-    'ebb_reference' => array(
-      'label' => t('Entity Building Block reference'),
-      'description' => t('This field stores the ID of a related Entity Building Block.'),
+    'component_reference' => array(
+      'label' => t('Component reference'),
+      'description' => t('This field stores the ID of a related component.'),
       'settings' => array( // instance_settings
         'referenceable_types' => array(),
       ),
       //'settings' => array(),
-      'default_widget' => 'ebb_reference_ebbid',
-      'default_formatter' => 'ebb_reference_ebb',
+      'default_widget' => 'component_reference_cid',
+      'default_formatter' => 'component_reference_component',
       // Add entity property info
-      'property_type' => 'ebb',
+      'property_type' => 'component',
     ),
   );
 }
@@ -49,17 +49,17 @@ function ebb_reference_field_info() {
 /**
  * Implements hook_field_settings_form().
  */
-function ebb_reference_field_settings_form($field, $instance, $has_data) {
+function components_reference_field_settings_form($field, $instance, $has_data) {
   //$settings = $instance['settings'];
   $settings = $field['settings'];
   
   $form = array();
   $form['referenceable_types'] = array(
     '#type' => 'checkboxes',
-    '#title' => t('Entity Building Block Types that can be referenced'),
+    '#title' => t('Component types that can be referenced'),
     '#multiple' => TRUE,
     '#default_value' => $settings['referenceable_types'],
-    '#options' => ebb_get_types_names(),
+    '#options' => components_get_types_names(),
   );
   
   return $form;
@@ -68,11 +68,11 @@ function ebb_reference_field_settings_form($field, $instance, $has_data) {
 /**
  * Implements hook_field_validate().
  */
-function ebb_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, $errors) {
+function components_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, $errors) {
   foreach ($items as $delta => $item) {
-    if (!empty($item['ebbid']) && !is_numeric($item['ebbid'])) {
+    if (!empty($item['cid']) && !is_numeric($item['cid'])) {
       $errors[$field['type']][$langcode][$delta][] = array(
-        'error' => 'ebb_reference_ebbid_invalid',
+        'error' => 'component_reference_cid_invalid',
         'message' => t('%label: invalid input.', array('%label' => $instance['label'])),
       );
     }
@@ -82,34 +82,34 @@ function ebb_reference_field_validate($entity_type, $entity, $field, $instance, 
 /**
  * Implements hook_field_is_empty().
  */
-function ebb_reference_field_is_empty($item, $field) {
-  if (!empty($item['ebbid'])) {
+function components_reference_field_is_empty($item, $field) {
+  if (!empty($item['cid'])) {
     return FALSE;
   }
   elseif (isset($item['entity'])) {
-    return ebb_reference_ebb_is_empty($item['entity']);
+    return components_reference_component_is_empty($item['entity']);
   }
   return TRUE;
 }
 
 /**
- * Determines whether an Entity Building Block entity is empty based on the fields.
+ * Determines whether a component entity is empty based on the fields.
  * 
- * @param EntityBuildingBlock $ebb
+ * @param Component $component
  */
-function ebb_reference_ebb_is_empty(EntityBuildingBlock $ebb) {
-  $instances = field_info_instances('ebb', $ebb->type);
+function components_reference_component_is_empty(Component $component) {
+  $instances = field_info_instances('component', $component->type);
   
   foreach ($instances as $instance) {
     $field_name = $instance['field_name'];
     $field = field_info_field($field_name);
     
     // Determine the list of languages to iterate on.
-    $languages = field_available_languages('ebb', $field);
+    $languages = field_available_languages('component', $field);
     
     foreach ($languages as $langcode) {
       if (!empty($item->$field_name[$langcode])) {
-        // If at least one field is not empty; the EntityBuidingBlock is not empty.
+        // If at least one field is not empty; the component is not empty.
         foreach ($item->$field_name[$langcode] as $field_item) {
           if (!module_invoke($field['module'], 'field_is_empty', $field_item, $field)) {
             return FALSE;
@@ -124,12 +124,12 @@ function ebb_reference_ebb_is_empty(EntityBuildingBlock $ebb) {
 /**
  * Implements hook_field_presave().
  */
-function ebb_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
+function components_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
   foreach ($items as &$item) {
     // In case the entity has been loaded / created, save it and set the id.
     if (isset($item['entity'])) {
       $item['entity']->save(TRUE);
-      $item = array('ebbid' => $item['entity']->ebbid);
+      $item = array('cid' => $item['entity']->cid);
     }
   }
 }
@@ -141,14 +141,14 @@ function ebb_reference_field_presave($entity_type, $entity, $field, $instance, $
 /**
  * Implements hook_field_formatter_info().
  */
-function ebb_reference_field_formatter_info() {
+function components_reference_field_formatter_info() {
   return array(
-    'ebb_reference_ebb' => array(
-      'label' => t('Rendered Entity Building Block'),
-      'description' => t('Display the referenced Entity Building Block in a specific view mode'),
-      'field types' => array('ebb_reference'),
+    'component_reference_component' => array(
+      'label' => t('Rendered component'),
+      'description' => t('Display the referenced component in a specific view mode'),
+      'field types' => array('component_reference'),
       'settings' => array(
-      	'ebb_reference_view_mode' => 'full',
+      	'component_reference_view_mode' => 'full',
       ),
     ),
   );
@@ -157,18 +157,18 @@ function ebb_reference_field_formatter_info() {
 /**
  * Implements hook_field_formatter_settings_form().
  */
-function ebb_reference_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
+function components_reference_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   //$settings = $display['instance_settings'];
   //$settings = $instance['settings'];
   
-  // Only build this information for ebb_reference_ebb displays
-  if ($display['type'] !== 'ebb_reference_ebb') {
+  // Only build this information for component_reference_component displays
+  if ($display['type'] !== 'component_reference_component') {
     return NULL;
   }
   
-  $entity_info = entity_get_info('ebb');
+  $entity_info = entity_get_info('component');
   $view_modes = $entity_info['view modes'];
   $options = array();
   
@@ -176,11 +176,11 @@ function ebb_reference_field_formatter_settings_form($field, $instance, $view_mo
     $options[$name] = $mode['label'];
   }
   
-  $element['ebb_reference_view_mode'] = array(
+  $element['component_reference_view_mode'] = array(
     '#title' => t('View mode'),
     '#type' => 'select',
     '#options' => $options,
-    '#default_value' => $settings['ebb_reference_view_mode'],
+    '#default_value' => $settings['component_reference_view_mode'],
     // Never empty, so no #empty_option
   );
   
@@ -190,16 +190,16 @@ function ebb_reference_field_formatter_settings_form($field, $instance, $view_mo
 /**
  * Implements hook_field_formatter_settings_summary().
  */
-function ebb_reference_field_formatter_settings_summary($field, $instance, $view_mode) {
+function components_reference_field_formatter_settings_summary($field, $instance, $view_mode) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   //$settings = $display['instance_settings'];
   //$settings = $instance['settings'];
   
-  if ($display['type'] === 'ebb_reference_ebb') {
-    $entity_info = entity_get_info('ebb');
+  if ($display['type'] === 'component_reference_component') {
+    $entity_info = entity_get_info('component');
     $view_modes = $entity_info['view modes'];
-    $mode = $view_modes[$settings['ebb_reference_view_mode']]['label'];
+    $mode = $view_modes[$settings['component_reference_view_mode']]['label'];
     $summary = t('View mode: %view_mode', array('%view_mode' => $mode));
   }
   else {
@@ -211,18 +211,18 @@ function ebb_reference_field_formatter_settings_summary($field, $instance, $view
 /**
  * Implements hook_field_formatter_view().
  */
-function ebb_reference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+function components_reference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $result = array();
   $settings = $display['settings'];
   //$settings = $display['instance_settings'];
   //$settings = $instance['settings'];
   
   switch ($display['type']) {
-    case 'ebb_reference_ebb':
-      $view_mode = $settings['ebb_reference_view_mode'];
+    case 'component_reference_component':
+      $view_mode = $settings['component_reference_view_mode'];
       foreach ($items as $delta => $item) {
         // @TODO: drupal_render, is this a best practice?
-        $result[$delta]['#markup'] = drupal_render(ebb_view(ebb_load($item['ebbid'])));
+        $result[$delta]['#markup'] = drupal_render(component_view(component_load($item['cid'])));
       }
       break;
   }
@@ -237,15 +237,15 @@ function ebb_reference_field_formatter_view($entity_type, $entity, $field, $inst
 /**
  * Implements hook_field_widget_info().
  */
-function ebb_reference_field_widget_info() {
+function components_reference_field_widget_info() {
   return array(
-    'ebb_reference_ebbid' => array(
-      'label' => t('Entity Building Block ID'),
-      'field types' => array('ebb_reference'),
+    'component_reference_cid' => array(
+      'label' => t('Component ID'),
+      'field types' => array('component_reference'),
     ),
-    'ebb_reference_embed' => array(
-      'label' => t('Entity Building Block Embedded'),
-      'field types' => array('ebb_reference'),
+    'component_reference_embed' => array(
+      'label' => t('Component Embedded'),
+      'field types' => array('component_reference'),
     ),
   );
 }
@@ -253,46 +253,46 @@ function ebb_reference_field_widget_info() {
 /**
  * Implements hook_field_widget_form().
  */
-function ebb_reference_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+function components_reference_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $base = $element;
   
   switch ($instance['widget']['type']) {
-    case 'ebb_reference_ebbid':
-      $element['ebbid'] = array(
+    case 'component_reference_cid':
+      $element['cid'] = array(
         '#type' => 'textfield',
-        '#title' => t('Entity Building Block ID'),
-        '#default_value' => isset($items[$delta]['ebbid']) ? $items[$delta]['ebbid'] : NULL,
+        '#title' => t('Component ID'),
+        '#default_value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
       ) + $base;
       break;
-    case 'ebb_reference_embed':
+    case 'component_reference_embed':
       $field_parents = $element['#field_parents'];
       $field_name = $element['#field_name'];
       $language = $element['#language'];
       
       // @TODO remove hardcoded type, provide option of field refereceable types
-      $ebb_type = 'header'; // HARDCODED
+      $component_type = 'header'; // HARDCODED
       
-      $ebb = ebb_reference_field_get_entity($item[$delta], $ebb_type);
+      $component = components_reference_field_get_entity($item[$delta], $component_type);
       
-      // Nest the Entity Building Block entity form in a dedicated parent space,
+      // Nest the component entity form in a dedicated parent space,
       // by appending [field_name, langcode, delta] to the current parent space.
-      // That way the form values of the Entity Building Block item are separated.
+      // That way the form values of the component item are separated.
       $parents = array_merge($field_parents, array($field_name, $language, $delta));
       
       $element += array(
-        '#element_validate' => array('ebb_reference_field_widget_embed_validate'),
+        '#element_validate' => array('components_reference_field_widget_embed_validate'),
         '#parents' => $parents,
       );
       
       // Put our entity in the form state, so FAPI callbacks can access it.
       $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
-      $field_state['entity'][$delta] = $ebb;
+      $field_state['entity'][$delta] = $component;
       field_form_set_state($field_parents, $field_name, $language, $form_state, $field_state);
       
-      field_attach_form('ebb', $ebb, $element, $form_state, $language);
+      field_attach_form('component', $component, $element, $form_state, $language);
       
       if (empty($element['#required'])) {
-        $element['#after_build'][] = 'ebb_reference_field_widget_embed_delay_required_validation';
+        $element['#after_build'][] = 'components_reference_field_widget_embed_delay_required_validation';
       }
       
       break;
@@ -302,37 +302,37 @@ function ebb_reference_field_widget_form(&$form, &$form_state, $field, $instance
 }
 
 /**
- * FAPI #after_build of an individual Entity Building Block element to delay the validation of #required.
+ * FAPI #after_build of an individual component element to delay the validation of #required.
  */
-function ebb_reference_field_widget_embed_delay_required_validation(&$element, &$form_state) {
+function components_reference_field_widget_embed_delay_required_validation(&$element, &$form_state) {
   // If the process_input flag is set, the form and its input is going to be
   // validated. Prevent #required (sub)fields from throwing errors while
-  // their non-#required Entity Building Block item is empty.
+  // their non-#required component item is empty.
   if ($form_state['process_input']) {
-    _ebb_reference_collect_required_elements($element, $element['#ebb_reference_required_elements']);
+    _components_reference_collect_required_elements($element, $element['#component_reference_required_elements']);
   }
   return $element;
 }
 
-function _ebb_reference_collect_required_elements(&$element, &$required_elements) {
+function _components_reference_collect_required_elements(&$element, &$required_elements) {
   // Recurse through all children.
   foreach (element_children($element) as $key) {
     if (isset($element[$key]) && $element[$key]) {
-      _ebb_reference_collect_required_elements($element[$key], $required_elements);
+      _components_reference_collect_required_elements($element[$key], $required_elements);
     }
   }
   if (!empty($element['#required'])) {
     $element['#required'] = FALSE;
     $required_elements[] = &$element;
     $element += array('#pre_render' => array());
-    array_unshift($element['#pre_render'], 'ebb_reference_field_widget_render_required');
+    array_unshift($element['#pre_render'], 'components_reference_field_widget_render_required');
   }
 }
 
 /**
  * #pre_render callback that ensures the element is rendered as being required.
  */
-function ebb_reference_field_widget_render_required($element) {
+function components_reference_field_widget_render_required($element) {
   $element['#required'] = TRUE;
   return $element;
 }
@@ -340,7 +340,7 @@ function ebb_reference_field_widget_render_required($element) {
 /**
  * FAPI validation of an individual field-collection element.
  */
-function ebb_reference_field_widget_embed_validate($element, &$form_state, $complete_form) {
+function components_reference_field_widget_embed_validate($element, &$form_state, $complete_form) {
   $instance = field_widget_instance($element, $form_state);
   $field = field_widget_field($element, $form_state);
   $field_parents = $element['#field_parents'];
@@ -348,14 +348,14 @@ function ebb_reference_field_widget_embed_validate($element, &$form_state, $comp
   $language = $element['#language'];
 
   $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
-  $ebb = $field_state['entity'][$element['#delta']];
+  $component = $field_state['entity'][$element['#delta']];
   
   // Attach field API validation of the embedded form.
-  field_attach_form_validate('ebb', $ebb, $element, $form_state);
+  field_attach_form_validate('component', $component, $element, $form_state);
   
   // Now validate required elements if the entity is not empty.
-  if (!ebb_reference_ebb_is_empty($ebb) && !empty($element['#ebb_reference_required_elements'])) {
-    foreach ($element['#ebb_reference_required_elements'] as &$elements) {
+  if (!components_reference_component_is_empty($component) && !empty($element['#component_reference_required_elements'])) {
+    foreach ($element['#component_reference_required_elements'] as &$elements) {
       
       // Copied from _form_validate().
       if (isset($elements['#needs_validation'])) {
@@ -378,11 +378,11 @@ function ebb_reference_field_widget_embed_validate($element, &$form_state, $comp
   // prepare it for saving.
   if ($form_state['submitted'] && !form_get_errors()) {
 
-    field_attach_submit('ebb', $ebb, $element, $form_state);
-    // Put the Entity Building Block item in $item['entity'], so it is saved with
+    field_attach_submit('component', $component, $element, $form_state);
+    // Put the component item in $item['entity'], so it is saved with
     // the host entity via hook_field_presave() / field API if it is not empty.
-    // @see ebb_reference_field_presave()
-    $item['entity'] = $ebb;
+    // @see components_reference_field_presave()
+    $item['entity'] = $component;
     form_set_value($element, $item, $form_state);
   }
 }
@@ -390,9 +390,9 @@ function ebb_reference_field_widget_embed_validate($element, &$form_state, $comp
 /**
  * Implements hook_field_widget_error().
  */
-function ebb_reference_field_widget_error($element, $error, $form, $form_state) {
+function components_reference_field_widget_error($element, $error, $form, $form_state) {
   switch ($error['error']) {
-    case 'ebb_reference_ebbid_invalid':
+    case 'component_reference_cid_invalid':
       $error_element = $element;
       break;
     default:
@@ -403,17 +403,17 @@ function ebb_reference_field_widget_error($element, $error, $form, $form_state) 
 }
 
 /**
- * Gets an Entity Building Block
+ * Gets a component
  * 
  * @return
- *   An Entity Building Block object or FALSE.
+ *   A component object or FALSE.
  */
-function ebb_reference_field_get_entity(&$item, $ebb_type = NULL) {
-  if (isset($item['ebbid'])) {
-    return ebb_load($item['ebbid']);
+function components_reference_field_get_entity(&$item, $component_type = NULL) {
+  if (isset($item['cid'])) {
+    return component_load($item['cid']);
   }
-  elseif (!isset($item['entity']) && isset($ebb_type)) {
-    $item['entity'] = ebb_create(array('type' => $ebb_type));
+  elseif (!isset($item['entity']) && isset($component_type)) {
+    $item['entity'] = component_create(array('type' => $component_type));
   }
   return isset($item['entity']) ? $item['entity'] : FALSE;
 }
@@ -425,8 +425,8 @@ function ebb_reference_field_get_entity(&$item, $ebb_type = NULL) {
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function ebb_reference_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
-  if ($form['#field']['type'] == 'ebb_reference') {
+function components_reference_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
+  if ($form['#field']['type'] == 'component_reference') {
     // Set the cardinality of the field settings to UNLIMITED by default.
     $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
   }

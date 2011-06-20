@@ -1,0 +1,9 @@
+name = Components Reference
+description = Defines a field type for referencing a component from another entity.
+package = Fields
+core = 7.x
+dependencies[] = components
+dependencies[] = field
+dependencies[] = options
+files[] = components_reference.install
+files[] = components_reference.module

@@ -1,0 +1,10 @@
+name = Components
+description = The Components module provides components as entities.
+core = 7.x
+dependencies[] = entity
+files[] = components.admin.inc
+files[] = components.forms.inc
+files[] = components.info.inc
+files[] = components.install
+files[] = components.module
+configure = admin/structure/componenttypes
