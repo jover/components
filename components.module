@@ -101,7 +101,7 @@ function components_entity_info() {
   $entity_info['component_type'] = array(
     'label' => t('Component type'),
     'entity class' => 'ComponentType',
-    'controller class' => 'EntityAPIController',
+    'controller class' => 'EntityAPIControllerExportable', // EntityAPIController
     'base table' => 'component_type',
     'fieldable' => TRUE,
     'bundle of' => 'component',
@@ -115,7 +115,7 @@ function components_entity_info() {
     'module' => 'components',
     // Enable the entity API's admin UI.
     'admin ui' => array(
-      'path' => 'admin/structure/componenttypes',
+      'path' => 'admin/structure/component-types',
       'file' => 'components.admin.inc',
       'controller class' => 'ComponentTypeUIController',
     ),
@@ -135,8 +135,8 @@ function components_entity_info_alter(&$entity_info) {
     $entity_info['component']['bundles'][$type] = array(
       'label' => $info->label,
       'admin' => array(
-        'path' => 'admin/structure/componenttypes/manage/%component_type',
-        'real path' => 'admin/structure/componenttypes/manage/' . $type,
+        'path' => 'admin/structure/component-types/manage/%component_type',
+        'real path' => 'admin/structure/component-types/manage/' . $type,
         'bundle argument' => 4,
         'access arguments' => array('administer component types'),
       ),
@@ -382,9 +382,10 @@ function component_type_save(ComponentType $component_type) {
  * @see component_type_load_multiple()
  */
 function component_type_load($type) {
-  $types = isset($type) ? array($type) : array();
+  /*$types = isset($type) ? array($type) : array();
   $results = component_type_load_multiple($types);
-  return $results ? reset($results) : FALSE;
+  return $results ? reset($results) : FALSE;*/
+  return components_get_types($type);
 }
 // @TODO: component_type_load() <- difference -> components_get_types()
 /**
@@ -396,7 +397,7 @@ function component_type_load($type) {
  *   Depending wheter $type_name isset, an array of component types or a single one.
  */
 function components_get_types($type_name = NULL) {
-  $types = component_type_load_multiple(isset($type_name) ? array($type_name) : FALSE);
+  $types = component_type_load_multiple_by_name(isset($type_name) ? array($type_name) : FALSE);
   return isset($type_name) ? reset($types) : $types;
 }
 
@@ -430,6 +431,18 @@ function components_get_types_names() {
  */
 function component_type_load_multiple($types = array(), $conditions = array(), $reset = FALSE) {
   return entity_load('component_type', $types, $conditions, $reset);
+}
+
+/**
+ * Loads multiple component type objects.
+ * 
+ * @param array $types
+ *   An array of component types.
+ * @return ComponentType[]
+ *   An array of component type objects.
+ */
+function component_type_load_multiple_by_name($types = array()) {
+  return entity_load_multiple_by_name('component_type', $types);
 }
 
 /**

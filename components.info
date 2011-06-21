@@ -7,4 +7,4 @@ files[] = components.forms.inc
 files[] = components.info.inc
 files[] = components.install
 files[] = components.module
-configure = admin/structure/componenttypes
+configure = admin/structure/component-types
