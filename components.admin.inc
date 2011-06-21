@@ -15,8 +15,63 @@ class ComponentTypeUIController extends EntityDefaultUIController {
    */
   public function hook_menu() {
     $items = parent::hook_menu();
-    $items[$this->path]['description'] = t('Manage Components, including fields.');
+    $items[$this->path]['description'] = t('Manage components, including fields.');
     return $items;
+  }
+  
+/**
+   * Generates the render array for a overview table for arbitrary entities
+   * matching the given conditions.
+   *
+   * @param $conditions
+   *   An array of conditions as needed by entity_load().
+
+   * @return Array
+   *   A renderable array.
+   */
+  public function overviewTable($conditions = array()) {
+    $table = parent::overviewTable($conditions);
+    $header_items = array();
+    foreach ($table['#header'] as $delta => $header) {
+      // insert extra header items before the original second item
+      // @TODO: wait for drupal_array_insert() : http://drupal.org/node/66183
+      if ($delta == 1) {
+        $header_items[] = t('Description');
+        $header_items[] = t('Sample Image');
+      }
+      $header_items[] = $header;
+    }
+    $table['#header'] = $header_items;
+    return $table;
+  }
+  
+/**
+   * Generates the row for the passed entity and may be overridden in order to
+   * customize the rows.
+   *
+   * @param $additional_cols
+   *   Additional columns to be added after the entity label column.
+   */
+  protected function overviewTableRow($conditions, $id, $entity, $additional_cols = array()) {
+    // Add description column
+    $additional_cols[] = (isset($entity->description)) ? $entity->description : t('No description');
+    
+    // Add sample image column
+    if (isset($entity->field_component_type_image) && $image = field_get_items('component_type', $entity, 'field_component_type_image')) {
+      $image = reset($image);
+      $image_vars = array(
+        'style_name' => 'thumbnail', // @TODO: create custom image styles for sample images (component_type_sample_image & component_type_sample_image_thumbnail)
+        'path' => $image['uri'],
+        'alt' => t('@label sample image', array('@label' => $entity->label)),
+      	'title' => t('@title sample image', array('@title' => $entity->label)),
+      );
+      $additional_cols[] = theme_image_style($image_vars);
+    }
+    else {
+      $additional_cols[] = t('No sample image');
+    }
+    
+    return parent::overviewTableRow($conditions, $id, $entity, $additional_cols);
   }
   
 }
@@ -104,14 +159,14 @@ function component_type_form_submit(&$form, &$form_state) {
   $component_type = entity_ui_form_submit_build_entity($form, $form_state);
   // Save and go back.
   $component_type->save();
-  $form_state['redirect'] = 'admin/structure/componenttypes';
+  $form_state['redirect'] = 'admin/structure/component-types';
 }
 
 /**
  * Form API submit callback for the delete button.
  */
 function component_type_form_submit_delete(&$form, &$form_state) {
-  $form_state['redirect'] = 'admin/structure/componenttypes/manage/' . $form_state['component_type']->type . '/delete';
+  $form_state['redirect'] = 'admin/structure/component-types/manage/' . $form_state['component_type']->type . '/delete';
 }
 
 /**
