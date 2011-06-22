@@ -11,13 +11,6 @@ function component_form($form, &$form_state, $component) {
     '#value' => $component->type,
   );
   
-  $form['status'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Published'),
-    '#default_value' => $component->status,
-    '#weight' => 9999,
-  );
-  
   $form['actions'] = array('#type' => 'actions', '#weight' => 1000);
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -25,11 +18,18 @@ function component_form($form, &$form_state, $component) {
     '#submit' => array('component_form_submit'),
   );
   
+  // @TODO: access arguments 'delete any $type component'
   if (!empty($component->cid)) {
+    $form['cid'] = array( // component_save() needs this to determine it's an existing component
+      '#type' => 'hidden',
+      '#value' => $component->cid,
+    );
+    
     $form['actions']['delete'] = array(
       '#type' => 'submit',
       '#value' => t('Delete'),
       '#submit' => array('component_form_delete_submit'),
+      //'#access' => user_access('delete any $type component'),
     );
   }
   
@@ -47,7 +47,6 @@ function component_form_validate($form, &$form_state) {
 }
 
 function component_form_submit($form, &$form_state) {
-  //$component = component_create($form_state['values']);
   $component = $form_state['entity'];
   
   // Notify field widgets
@@ -60,6 +59,7 @@ function component_form_submit($form, &$form_state) {
   $form_state['redirect'] = $component->defaultUri();
 }
 
+// @TODO: check if destination works
 function component_form_delete_submit($form, &$form_state) {
   $destination = array();
   if (isset($_GET['destination'])) {
@@ -67,7 +67,10 @@ function component_form_delete_submit($form, &$form_state) {
     unset($_GET['destination']);
   }
   $component = $form_state['entity'];
-  $form_state['redirect'] = array($component->defaultUri() . '/delete', array('query' => $destination));
+  $redirect = $component->defaultUri();
+  $redirect['path'] = $redirect['path'] . '/delete';
+  $redirect['query'] = $destination;
+  $form_state['redirect'] = $redirect;
 }
 
 function component_form_delete_confirm($form, &$form_state, $component) {

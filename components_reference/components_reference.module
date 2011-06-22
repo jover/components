@@ -148,7 +148,7 @@ function components_reference_field_formatter_info() {
       'description' => t('Display the referenced component in a specific view mode'),
       'field types' => array('component_reference'),
       'settings' => array(
-        'component_reference_view_mode' => 'full',
+        'component_reference_view_mode' => 'default',
       ),
     ),
   );

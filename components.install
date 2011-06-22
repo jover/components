@@ -10,23 +10,23 @@
  */
 function components_schema() {
   $schema['component'] = array(
-    'description' => 'The base table for Entity Building Blocks.',
+    'description' => 'The base table for components.',
     'fields' => array(
       'cid' => array(
-        'description' => 'The primary identifier for an Entity Building Block.',
+        'description' => 'The primary identifier for a component.',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'type' => array(
-        'description' => 'The {component_type}.type of this Entity Building Block.',
+        'description' => 'The {component_type}.type of this component.',
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
         'default' => '',
       ),
       'status' => array(
-        'description' => 'Boolean indicating whether the Entity Building Block is published (visible to non-administrators).',
+        'description' => 'Boolean indicating whether the component is published (visible to non-administrators).',
         'type' => 'int',
         'not null' => TRUE,
         'default' => 1,
@@ -46,7 +46,7 @@ function components_schema() {
     'description' => 'Stores information about all defined {component} types.',
     'fields' => array(
       'id' => array( // Required for internal use of the EntityAPI
-        'description' => 'The primary identifier for an Entity Building Block Type.',
+        'description' => 'The primary identifier for a component type.',
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -69,14 +69,6 @@ function components_schema() {
         'description' => 'A brief description of this type.',
         'type' => 'text',
         'not null' => TRUE,
-        'size' => 'medium',
-        /*'default' => '',*/
-        'translatable' => TRUE,
-      ),
-      'help' => array(
-        'description' => 'Help information shown to the user when creating a {component} of this type.',
-        'type' => 'text',
-        'not null' => FALSE,
         'size' => 'medium',
         'translatable' => TRUE,
       ),
@@ -168,7 +160,7 @@ function _components_type_installed_instances() {
     'label' => t('Sample Image'),
     'entity_type' => 'component_type',
     'bundle' => 'component_type',
-    'description' => t('Upload a sample image for this Entity Building Block Type.'),
+    'description' => t('Upload a sample image for this component type.'),
     'required' => FALSE,
     'settings' => array(
       'file_directory' => 'field/image',
@@ -192,12 +184,6 @@ function _components_type_installed_instances() {
         'label' => 'hidden',
         'type' => 'image',
         'settings' => array('image_style' => 'large', 'image_link' => ''),
-        'weight' => -1,
-      ),
-      'teaser' => array(
-        'label' => 'hidden',
-        'type' => 'image',
-        'settings' => array('image_style' => 'medium', 'image_link' => ''),
         'weight' => -1,
       ),
     ),

@@ -26,7 +26,7 @@
  *   into a string within the variable $classes.
  * 
  * Component status variables:
- * - $view_mode: View mode, e.g. 'full', 'teaser'...
+ * - $view_mode: View mode, e.g. 'default', ...
  * - $status: Flag for published status.
  * 
  * Field variables: for each field instance attached to the component a corresponding

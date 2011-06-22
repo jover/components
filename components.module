@@ -26,10 +26,19 @@ function components_help($path, $arg) {
  */
 function components_menu() {
   $items = array();
+  
+  // @TODO: access arguments 'view any $type component'
+  $items['component/%component'] = array(
+    'title' => 'View',
+    'page callback' => 'component_view',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+  );
+  
   // @TODO: title callback with type name
-  // @TODO: access arguments 'create component'
+  // @TODO: access arguments 'create any $type component'
   $items['component/add/%'] = array(
-    'title' => 'Add component',
+    'title' => 'Create new component',
     'page callback' => 'component_add',
     'page arguments' => array(2),
     'access arguments' => array('administer components'),
@@ -37,15 +46,17 @@ function components_menu() {
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );
   
-  /*$items['component/%component/edit'] = array(
+  // @TODO: access arguments 'edit any $type component'
+  $items['component/%component/edit'] = array(
     'title' => 'Edit',
-    'page callback' => '',
-    'page arguments' => array(2),
+    'page callback' => 'component_edit',
+    'page arguments' => array(1),
     'access arguments' => array('administer components'),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-  );*/
+  );
   
+  // @TODO: access arguments 'delete any $type component'
   $items['component/%component/delete'] = array(
     'title' => 'Delete',
     'page callback' => 'drupal_get_form',
@@ -53,13 +64,6 @@ function components_menu() {
     'access arguments' => array('administer components'),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
-  );
-  
-  $items['component/%component'] = array(
-    'title' => 'View',
-    'page callback' => 'component_view',
-    'page arguments' => array(1),
-    'access arguments' => array('access content'),
   );
 
   return $items;
@@ -78,8 +82,8 @@ function components_entity_info() {
     'base table' => 'component',
     'fieldable' => TRUE,
     'view modes' => array(
-      'full' => array(
-        'label' => t('Full content'),
+      'default' => array(
+        'label' => t('Default'),
         'custom settings' => FALSE,
       ),
     ),
@@ -163,8 +167,14 @@ function components_permission() {
   foreach (components_get_types() as $type) {
     $type_name = check_plain($type->type);
     $permissions += array(
+      'create any ' . $type_name . ' component' => array(
+        'title' => t('%type_name: Create any component', array('%type_name' => $type->label)),
+      ),
       'edit any ' . $type_name . ' component' => array(
         'title' => t('%type_name: Edit any component', array('%type_name' => $type->label)),
+      ),
+      'delete any ' . $type_name . ' component' => array(
+        'title' => t('%type_name: Delete any component', array('%type_name' => $type->label)),
       ),
       'view any ' . $type_name . ' component' => array(
         'title' => t('%type_name: View any component', array('%type_name' => $type->label)),
@@ -272,13 +282,18 @@ function component_add($type) {
   return drupal_get_form('component_form', component_create(array('type' => $type)));
 }
 
+function component_edit($component) {
+  drupal_set_title(t('Edit %type component', array('%type' => component_type_get_label_by_type($component->type))), PASS_THROUGH);
+  return drupal_get_form('component_form', $component);
+}
+
 /**
  * Generate an array for rendering the given component.
  * 
  * @param $component
  *   A component object.
  * @param $view_mode
- *   View mode, e.g. 'full', 'teaser'...
+ *   View mode, e.g. 'default', ...
  * @param $langcode
  *   (optional) A language code to use for rendering. Defaults to the global
  *   content language of the current request.
@@ -286,7 +301,7 @@ function component_add($type) {
  * @return
  *   An array as expected by drupal_render().
  */
-function component_view($component, $view_mode = 'full', $langcode = NULL) {
+function component_view($component, $view_mode = 'default', $langcode = NULL) {
   if (!isset($langcode)) {
     $langcode = $GLOBALS['language_content']->language;
   }
@@ -550,7 +565,7 @@ class Component extends Entity {
     parent::save();
   }
   
-  public function buildContent($view_mode = 'full', $langcode = NULL) {
+  public function buildContent($view_mode = 'default', $langcode = NULL) {
     $content = array();
     // Assume newly create objects are still empty.
     if (!empty($this->is_new)) {
@@ -569,7 +584,6 @@ class ComponentType extends Entity {
   public $type;
   public $label;
   public $description;
-  public $help;
   
   public function __construct($values = array()) {
     parent::__construct($values, 'component_type');

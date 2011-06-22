@@ -120,21 +120,11 @@ function component_type_form($form, &$form_state, $component_type, $op = 'edit')
     '#weight' => 3,
   );
   
-  $form['help'] = array(
-    '#title' => t('Help'),
-    '#type' => 'textarea',
-    '#default_value' => $component_type->help,
-    '#description' => t('Help information shown to the user when creating a component of this type.'),
-    '#required' => FALSE,
-    '#rows' => 2,
-    '#weight' => 4,
-  );
-  
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save'),
-    '#weight' => 5,
+    '#weight' => 4,
   );
   
   if (!$component_type->isLocked() && $op != 'add') {
