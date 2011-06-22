@@ -1,6 +1,6 @@
 <?php
 
-include_once 'components.forms.inc'; // is this necessary?
+module_load_include('inc', 'components', 'components.forms');
 
 /**
  * @file
@@ -29,7 +29,7 @@ function components_menu() {
   
   // @TODO: access arguments 'view any $type component'
   $items['component/%component'] = array(
-    'title' => 'View',
+    'title' => 'View component',
     'page callback' => 'component_view',
     'page arguments' => array(1),
     'access arguments' => array('access content'),
