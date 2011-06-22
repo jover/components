@@ -108,10 +108,7 @@ function components_uninstall() {
   }
   
   // Delete all field instances attached to the entity types defined by this module
-  $instances = array();
-  $instances = array_merge($instances, field_info_instances('component'));
-  $instances = array_merge($instances, field_info_instances('component_type'));
-  foreach ($intances as $instance_name => $instance) {
+  foreach (array_keys(_components_type_installed_instances()) as $instance) {
     field_delete_instance($instance);
   }
   
