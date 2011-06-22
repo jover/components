@@ -82,8 +82,8 @@ function components_entity_info() {
     'base table' => 'component',
     'fieldable' => TRUE,
     'view modes' => array(
-      'default' => array(
-        'label' => t('Default'),
+      'rss' => array(
+        'label' => t('RSS'),
         'custom settings' => FALSE,
       ),
     ),
@@ -293,7 +293,7 @@ function component_edit($component) {
  * @param $component
  *   A component object.
  * @param $view_mode
- *   View mode, e.g. 'default', ...
+ *   View mode, e.g. 'default', 'rss', ...
  * @param $langcode
  *   (optional) A language code to use for rendering. Defaults to the global
  *   content language of the current request.
