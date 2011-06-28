@@ -74,7 +74,7 @@ function components_schema() {
       ),
     ) + entity_exportable_schema_fields(),
     'primary key' => array('id'),
-    'unique kyes' => array(
+    'unique keys' => array(
       'type' => array('type'),
       'label' => array('label'),
     ),
