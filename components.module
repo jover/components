@@ -37,10 +37,18 @@ function components_menu() {
   
   // @TODO: title callback with type name
   // @TODO: access arguments 'create any $type component'
-  $items['component/add/%'] = array(
+  /*$items['component/add/%'] = array(
     'title' => 'Create new component',
     'page callback' => 'component_add',
     'page arguments' => array(2),
+    'access arguments' => array('administer components'),
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );*/
+  $items['component/add/%/%/%/%'] = array(
+    'title' => 'Create new component',
+    'page callback' => 'component_add',
+    'page arguments' => array(2, 3, 4, 5),
     'access arguments' => array('administer components'),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
@@ -277,10 +285,46 @@ function component_access($op, $entity_type) {
 }
 
 // @TODO: security concerning the type and error message
-function component_add($type) {
+function component_add($type, $entity_type, $entity_id, $field_name) {
+  // Check wheter the given entity_type exists
+  $info = entity_get_info();
+  if (!isset($info[$entity_type])) {
+    return MENU_NOT_FOUND;
+  }
+  
+  // Load the entity with the given entity_type and entity_id
+  $entity = entity_load_single($entity_type, $entity_id);
+  if (!$entity) {
+    return MENU_NOT_FOUND;
+  }
+  
+  // Ensure the given entity is of a bundle that has an instance of the field
+  list($id, $rev_id, $bundle) = entity_extract_ids($entity_type, $entity);
+  $instance = field_info_instance($entity_type, $field_name, $bundle);
+  if (!$instance) {
+    return MENU_NOT_FOUND;
+  }
+  
+  // Check field cardinality.
+  $field = field_info_field($field_name);
+  $langcode = LANGUAGE_NONE;
+  if (!($field['cardinality'] == FIELD_CARDINALITY_UNLIMITED || !isset($entity->{$field_name}[$langcode]) || count($entity->{$field_name}[$langcode]) < $field['cardinality'])) {
+    drupal_set_message(t('No more components can be added to this field.'), 'error');
+    return '';
+  }
+  
+  drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
+  
+  $component = component_create(array('type' => $type));
+  //$component->setHostEntity($entity_type, $entity);
+  
+  // @TODO: check permission to create a component
+  return drupal_get_form('component_form', $component);
+}
+/*function component_add($type) {
   drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
   return drupal_get_form('component_form', component_create(array('type' => $type)));
-}
+}*/
 
 function component_edit($component) {
   drupal_set_title(t('Edit %type component', array('%type' => component_type_get_label_by_type($component->type))), PASS_THROUGH);

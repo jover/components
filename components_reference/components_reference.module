@@ -86,52 +86,7 @@ function components_reference_field_is_empty($item, $field) {
   if (!empty($item['cid'])) {
     return FALSE;
   }
-  elseif (isset($item['entity'])) {
-    return components_reference_component_is_empty($item['entity']);
-  }
   return TRUE;
-}
-
-/**
- * Determines whether a component entity is empty based on the fields.
- * 
- * @param Component $component
- */
-function components_reference_component_is_empty(Component $component) {
-  $instances = field_info_instances('component', $component->type);
-  
-  foreach ($instances as $instance) {
-    $field_name = $instance['field_name'];
-    $field = field_info_field($field_name);
-    
-    // Determine the list of languages to iterate on.
-    $languages = field_available_languages('component', $field);
-    
-    foreach ($languages as $langcode) {
-      if (!empty($item->$field_name[$langcode])) {
-        // If at least one field is not empty; the component is not empty.
-        foreach ($item->$field_name[$langcode] as $field_item) {
-          if (!module_invoke($field['module'], 'field_is_empty', $field_item, $field)) {
-            return FALSE;
-          }
-        }
-      }
-    }
-  }
-  return TRUE;
-}
-
-/**
- * Implements hook_field_presave().
- */
-function components_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  foreach ($items as &$item) {
-    // In case the entity has been loaded / created, save it and set the id.
-    if (isset($item['entity'])) {
-      $item['entity']->save(TRUE);
-      $item = array('cid' => $item['entity']->cid);
-    }
-  }
 }
 
 /*****************************/
@@ -258,43 +213,56 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
   
   switch ($instance['widget']['type']) {
     case 'component_reference_cid':
+    case '2component_reference_embed':
       $element['cid'] = array(
         '#type' => 'textfield',
         '#title' => t('Component ID'),
         '#default_value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
-      ) + $base;
+      ) + $base; // @TODO: $base?
       break;
     case 'component_reference_embed':
-      $field_parents = $element['#field_parents'];
-      $field_name = $element['#field_name'];
-      $language = $element['#language'];
-      
-      // @TODO remove hardcoded type, provide option of field refereceable types
-      $component_type = 'header'; // HARDCODED
-      
-      $component = components_reference_field_get_entity($item[$delta], $component_type);
-      
-      // Nest the component entity form in a dedicated parent space,
-      // by appending [field_name, langcode, delta] to the current parent space.
-      // That way the form values of the component item are separated.
-      $parents = array_merge($field_parents, array($field_name, $language, $delta));
-      
-      $element += array(
-        '#element_validate' => array('components_reference_field_widget_embed_validate'),
-        '#parents' => $parents,
-      );
-      
-      // Put our entity in the form state, so FAPI callbacks can access it.
-      $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
-      $field_state['entity'][$delta] = $component;
-      field_form_set_state($field_parents, $field_name, $language, $form_state, $field_state);
-      
-      field_attach_form('component', $component, $element, $form_state, $language);
-      
-      if (empty($element['#required'])) {
-        $element['#after_build'][] = 'components_reference_field_widget_embed_delay_required_validation';
+      if (isset($items[$delta]['cid'])) {
+        $element['component-' . $items[$delta]['cid']] = array(
+          '#type' => 'markup',
+          '#markup' => drupal_render(component_view(component_load($items[$delta]['cid']))),
+        );
+        $element['cid'] = array(
+          '#type' => 'hidden',
+          '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
+        ) + $base; // @TODO: $base?
       }
-      
+      else {
+        $component_types = $field['settings']['referenceable_types'];
+        $component_types_info = field_info_bundles('component');
+        
+        if ($component_types) {
+          $entity_type = $instance['entity_type'];
+          list($entity_id) = entity_extract_ids($entity_type, $form_state[$entity_type]);
+          
+          $component_links = array(
+          	'items' => array(),
+          	'title' => NULL,
+          	'type' => 'ul',
+          	'attributes' => array('class' => 'action-links')
+          );
+          
+          foreach ($component_types as $type) {
+            if (isset($component_types_info[$type])) {
+              // @TODO: check access for creating a component of this type
+              $component_links['items'][] = l(
+                $component_types_info[$type]['label'],
+                'component/add/' . $type . '/' . $entity_type . '/' . $entity_id . '/' . $field['field_name'],
+                array('query' => drupal_get_destination())
+              );
+            }
+          }
+          
+          $element['add_more_components'] = array(
+            '#type' => 'markup',
+            '#markup' => theme_item_list($component_links),
+          );
+        }
+      }
       break;
   }
   
@@ -302,88 +270,36 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
 }
 
 /**
- * FAPI #after_build of an individual component element to delay the validation of #required.
+ * Implements hook_form_alter().
  */
-function components_reference_field_widget_embed_delay_required_validation(&$element, &$form_state) {
-  // If the process_input flag is set, the form and its input is going to be
-  // validated. Prevent #required (sub)fields from throwing errors while
-  // their non-#required component item is empty.
-  if ($form_state['process_input']) {
-    _components_reference_collect_required_elements($element, $element['#component_reference_required_elements']);
-  }
-  return $element;
-}
-
-function _components_reference_collect_required_elements(&$element, &$required_elements) {
-  // Recurse through all children.
-  foreach (element_children($element) as $key) {
-    if (isset($element[$key]) && $element[$key]) {
-      _components_reference_collect_required_elements($element[$key], $required_elements);
-    }
-  }
-  if (!empty($element['#required'])) {
-    $element['#required'] = FALSE;
-    $required_elements[] = &$element;
-    $element += array('#pre_render' => array());
-    array_unshift($element['#pre_render'], 'components_reference_field_widget_render_required');
-  }
-}
-
-/**
- * #pre_render callback that ensures the element is rendered as being required.
- */
-function components_reference_field_widget_render_required($element) {
-  $element['#required'] = TRUE;
-  return $element;
-}
-
-/**
- * FAPI validation of an individual field-collection element.
- */
-function components_reference_field_widget_embed_validate($element, &$form_state, $complete_form) {
-  $instance = field_widget_instance($element, $form_state);
-  $field = field_widget_field($element, $form_state);
-  $field_parents = $element['#field_parents'];
-  $field_name = $element['#field_name'];
-  $language = $element['#language'];
-
-  $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
-  $component = $field_state['entity'][$element['#delta']];
+function components_reference_form_alter(&$form, &$form_state, $form_id) {
+  $field_instances = components_reference_get_field_instances();
   
-  // Attach field API validation of the embedded form.
-  field_attach_form_validate('component', $component, $element, $form_state);
-  
-  // Now validate required elements if the entity is not empty.
-  if (!components_reference_component_is_empty($component) && !empty($element['#component_reference_required_elements'])) {
-    foreach ($element['#component_reference_required_elements'] as &$elements) {
-      
-      // Copied from _form_validate().
-      if (isset($elements['#needs_validation'])) {
-        $is_empty_multiple = (!count($elements['#value']));
-        $is_empty_string = (is_string($elements['#value']) && drupal_strlen(trim($elements['#value'])) == 0);
-        $is_empty_value = ($elements['#value'] === 0);
-        if ($is_empty_multiple || $is_empty_string || $is_empty_value) {
-          if (isset($elements['#title'])) {
-            form_error($elements, t('!name field is required.', array('!name' => $elements['#title'])));
-          }
-          else {
-            form_error($elements);
-          }
+  $field_occurrences = array();
+  foreach ($field_instances as $field_instance => $entity_types) {
+    foreach ($entity_types as $entity_type => $bundle) {
+      if (isset($form['#entity_type']) && isset($form['#bundle'])) {
+        if ($form['#entity_type'] == $entity_type && $form['#bundle'] == $bundle) {
+          $field_occurrences[] = $field_instance;
         }
       }
     }
   }
-
-  // Only if the form is being submitted, finish the collection entity and
-  // prepare it for saving.
-  if ($form_state['submitted'] && !form_get_errors()) {
-
-    field_attach_submit('component', $component, $element, $form_state);
-    // Put the component item in $item['entity'], so it is saved with
-    // the host entity via hook_field_presave() / field API if it is not empty.
-    // @see components_reference_field_presave()
-    $item['entity'] = $component;
-    form_set_value($element, $item, $form_state);
+  
+  // Check if this form has "Component reference"-fields
+  if (count($field_occurrences) < 1) {
+    return;
+  }
+  
+  foreach ($field_occurrences as $field_instance) {
+    if (isset($form[$field_instance])) {
+      $entity_type = $form['#entity_type'];
+      $bundle = $form['#bundle'];
+      $field = &$form[$field_instance];
+      
+      // Remove the "Add another item"-button from the form
+      unset($field[$field['#language']]['add_more']);
+    }
   }
 }
 
@@ -430,4 +346,32 @@ function components_reference_form_field_ui_field_edit_form_alter(&$form, &$form
     // Set the cardinality of the field settings to UNLIMITED by default.
     $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
   }
+}
+
+/**
+ * Return all field instances of the field type "Component reference".
+ * 
+ * The returned array will be in the form of:
+ * array(field_name => array(entity_type => bundle))
+ * Example:
+ * array(field_components_reference => array(node => page))
+ */
+function components_reference_get_field_instances() {
+  $instances = field_info_instances();
+  $field_types = field_info_field_types();
+  
+  $fields = array();
+  
+  foreach ($instances as $entity_type => $type_bundles) {
+    foreach ($type_bundles as $bundle => $bundle_instances) {
+      foreach ($bundle_instances as $field_name => $instance) {
+        $field = field_info_field($field_name);
+        if ($field['type'] == 'component_reference') {
+          $fields[$field_name][$entity_type] = $bundle;
+        }
+      }
+    }
+  }
+  
+  return $fields;
 }
