@@ -109,9 +109,15 @@ function component_form_delete_confirm_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     $component = component_load($form_state['values']['cid']);
     component_delete($component->cid);
-    watchdog('component', 'Component: deleted cid=%cid', array('%cid' => $component->cid));
+    watchdog('component', 'Component: deleted cid=@cid', array('@cid' => $component->cid));
     drupal_set_message(t('The %type component has been deleted.', array('%type' => component_type_get_label_by_type($component->type))));
   }
   
-  $form_state['redirect'] = '<front>';
+  $destination = array();
+  if (isset($_GET['destination'])) {
+    $destination = drupal_get_destination();
+    unset($_GET['destination']);
+  }
+  
+  $form_state['redirect'] = ($destination) ? $destination : '<front>';
 }
