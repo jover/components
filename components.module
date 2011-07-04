@@ -310,16 +310,15 @@ function component_add($type, $entity_type, $entity_id, $field_name) {
   $langcode = LANGUAGE_NONE;
   if (!($field['cardinality'] == FIELD_CARDINALITY_UNLIMITED || !isset($entity->{$field_name}[$langcode]) || count($entity->{$field_name}[$langcode]) < $field['cardinality'])) {
     drupal_set_message(t('No more components can be added to this field.'), 'error');
-    return '';
+    return;
   }
   
   drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
   
   $component = component_create(array('type' => $type));
-  //$component->setHostEntity($entity_type, $entity);
   
   // @TODO: check permission to create a component
-  return drupal_get_form('component_form', $component);
+  return drupal_get_form('component_form', $component, $entity_type, $entity_id, $field_name);
 }
 /*function component_add($type) {
   drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
@@ -579,6 +578,10 @@ class Component extends Entity {
   public $type;
   public $status;
   
+  public $host_entity_type;
+  public $host_entity_id;
+  public $host_entity_field_name;
+  
   public function __construct($values = array()) {
     if (isset($values['type']) && is_object($values['type'])) {
       $values['type'] = $values['type']->type;
@@ -606,7 +609,35 @@ class Component extends Entity {
   }
   
   public function save() {
-    parent::save();
+    if (empty($this->is_new)) {
+      $transaction = db_transaction();
+      try {
+        if (!(isset($this->host_entity_type)) || !(isset($this->host_entity_id)) || !(isset($this->host_entity_field_name))) {
+          throw new Exception('Unable to create a component without a given host entity.');
+        }
+        
+        // Load the host entity with the given entity_type and entity_id
+        $host = entity_load_single($this->host_entity_type, $this->host_entity_id);
+        if (!$host) {
+          throw new Exception('Unable to create a component without a given host entity.');
+        }
+        
+        entity_get_controller($this->entityType)->save($this, $transaction);
+        
+        $host->{$this->host_entity_field_name}[$host->language][] = array('cid' => $this->identifier());
+        
+        entity_save($this->host_entity_type, $host);
+        
+        return $this;
+      }
+      catch (Exception $e) {
+        $transaction->rollback($this->entityType, $e->getMessage(), array(), WATCHDOG_ERROR);
+        return FALSE;
+      }
+    }
+    else {
+      return entity_get_controller($this->entityType)->save($this);
+    }
   }
   
   public function buildContent($view_mode = 'default', $langcode = NULL) {

@@ -5,7 +5,7 @@
  * Component forms
  */
 
-function component_form($form, &$form_state, $component) {
+function component_form($form, &$form_state, $component, $entity_type = NULL, $entity_id = NULL, $field_name = NULL) {
   $form['type'] = array(
     '#type' => 'hidden',
     '#value' => $component->type,
@@ -30,6 +30,22 @@ function component_form($form, &$form_state, $component) {
       '#value' => t('Delete'),
       '#submit' => array('component_form_delete_submit'),
       //'#access' => user_access('delete any $type component'),
+    );
+  }
+  else {
+    $form['host_entity_type'] = array(
+      '#type' => 'hidden',
+      '#value' => $entity_type,
+    );
+    
+    $form['host_entity_id'] = array(
+      '#type' => 'hidden',
+      '#value' => $entity_id,
+    );
+    
+    $form['host_entity_field_name'] = array(
+      '#type' => 'hidden',
+      '#value' => $field_name,
     );
   }
   

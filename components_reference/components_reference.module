@@ -222,10 +222,31 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
       break;
     case 'component_reference_embed':
       if (isset($items[$delta]['cid'])) {
-        $element['component-' . $items[$delta]['cid']] = array(
+        $component = component_load($items[$delta]['cid']);
+        
+        $element['component-' . $component->cid] = array(
           '#type' => 'markup',
-          '#markup' => drupal_render(component_view(component_load($items[$delta]['cid']))),
+          '#markup' => drupal_render(component_view($component)),
         );
+        
+        $component_links = array(
+       	  'items' => array(),
+          'title' => NULL,
+          'type' => 'ul',
+          'attributes' => array('class' => 'action-links')
+        );
+        
+        $component_links['items'][] = l(
+          t('Delete'),
+          'component/' . $component->cid . '/delete',
+          array('query' => drupal_get_destination())
+        );
+        
+        $element['component-' . $component->cid . '-delete'] = array(
+          '#type' => 'markup',
+          '#markup' => theme_item_list($component_links),
+        );
+        
         $element['cid'] = array(
           '#type' => 'hidden',
           '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
@@ -240,10 +261,10 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
           list($entity_id) = entity_extract_ids($entity_type, $form_state[$entity_type]);
           
           $component_links = array(
-          	'items' => array(),
-          	'title' => NULL,
-          	'type' => 'ul',
-          	'attributes' => array('class' => 'action-links')
+            'items' => array(),
+            'title' => NULL,
+            'type' => 'ul',
+            'attributes' => array('class' => 'action-links')
           );
           
           foreach ($component_types as $type) {
