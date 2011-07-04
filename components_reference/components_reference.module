@@ -224,33 +224,41 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
       if (isset($items[$delta]['cid'])) {
         $component = component_load($items[$delta]['cid']);
         
-        $element['component-' . $component->cid] = array(
-          '#type' => 'markup',
-          '#markup' => drupal_render(component_view($component)),
-        );
-        
-        $component_links = array(
-       	  'items' => array(),
-          'title' => NULL,
-          'type' => 'ul',
-          'attributes' => array('class' => 'action-links')
-        );
-        
-        $component_links['items'][] = l(
-          t('Delete'),
-          'component/' . $component->cid . '/delete',
-          array('query' => drupal_get_destination())
-        );
-        
-        $element['component-' . $component->cid . '-delete'] = array(
-          '#type' => 'markup',
-          '#markup' => theme_item_list($component_links),
-        );
-        
-        $element['cid'] = array(
-          '#type' => 'hidden',
-          '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
-        ) + $base; // @TODO: $base?
+        if ($component) {
+          $element['component-' . $component->cid] = array(
+            '#type' => 'markup',
+            '#markup' => drupal_render(component_view($component)),
+          );
+          
+          $component_links = array(
+         	'items' => array(),
+            'title' => NULL,
+            'type' => 'ul',
+            'attributes' => array('class' => 'action-links')
+          );
+          
+          $component_links['items'][] = l(
+            t('Delete'),
+            'component/' . $component->cid . '/delete',
+            array('query' => drupal_get_destination())
+          );
+          
+          $element['component-' . $component->cid . '-delete'] = array(
+            '#type' => 'markup',
+            '#markup' => theme_item_list($component_links),
+          );
+          
+          $element['cid'] = array(
+            '#type' => 'hidden',
+            '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
+          ) + $base; // @TODO: $base?
+        }
+        else {
+          $element['component-' . $items[$delta]['cid'] . '-cannot-be-found'] = array(
+            '#type' => 'markup',
+            '#markup' => t('The component with cid=@id cannot be found.', array('@id' => $items[$delta]['cid'])),
+          );
+        }
       }
       else {
         $component_types = $field['settings']['referenceable_types'];
