@@ -163,6 +163,41 @@ function components_reference_field_formatter_settings_summary($field, $instance
 }
 
 /**
+ * Implements hook_field_formatter_prepare_view().
+ * 
+ * @see node_reference_field_formatter_prepare_view()
+ */
+function components_reference_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items, $displays) {
+  // Collect cids to load
+  $cids = array();
+  foreach ($displays as $id => $display) {
+    if ($display['type'] == 'component_reference_component') {
+      foreach ($items[$id] as $delta => $item) {
+        // Default to 'not accessible'
+        $items[$id][$delta]['access'] = FALSE;
+        if (!empty($item['cid']) && is_numeric($item['cid'])) {
+          $items[$id][$delta]['access'] = TRUE;
+          $cids[$item['cid']] = $item['cid'];
+        }
+      }
+    }
+  }
+  
+  $components = component_load_multiple($cids);
+  
+  // Add the loaded components to the items
+  foreach ($displays as $id => $display) {
+    if ($display['type'] == 'component_reference_component') {
+      foreach ($items[$id] as $delta => $item) {
+        if ($item['access'] && isset($components[$item['cid']])) {
+          $items[$id][$delta]['component'] = $components[$item['cid']];
+        }
+      }
+    }
+  }
+}
+
+/**
  * Implements hook_field_formatter_view().
  */
 function components_reference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
@@ -173,10 +208,18 @@ function components_reference_field_formatter_view($entity_type, $entity, $field
   
   switch ($display['type']) {
     case 'component_reference_component':
+      // @TODO: do we need $view_mode?
       $view_mode = $settings['component_reference_view_mode'];
+      // @TODO: consider to create component_view_multiple() for performance reasons.
+      // @see node_reference_field_formatter_view()
+      // If we're going to use specific view_modes for each component, this won't be possible...
       foreach ($items as $delta => $item) {
-        // @TODO: drupal_render, is this a best practice?
-        $result[$delta]['#markup'] = drupal_render(component_view(component_load($item['cid'])));
+        if ($item['access'] && isset($item['component'])) {
+          $result[$delta] = component_view($item['component']);
+        }
+        else {
+          $result[$delta]['#markup'] = t('The component with cid=@cid cannot be found.', array('@cid' => $item['cid']));
+        }
       }
       break;
   }
@@ -255,7 +298,7 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
         else {
           $element['component-' . $items[$delta]['cid'] . '-cannot-be-found'] = array(
             '#type' => 'markup',
-            '#markup' => t('The component with cid=@id cannot be found.', array('@id' => $items[$delta]['cid'])),
+            '#markup' => t('The component with cid=@cid cannot be found.', array('@cid' => $items[$delta]['cid'])),
           );
         }
       }
