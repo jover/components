@@ -37,7 +37,6 @@ function components_reference_field_info() {
       'settings' => array( // instance_settings
         'referenceable_types' => array(),
       ),
-      //'settings' => array(),
       'default_widget' => 'component_reference_cid',
       'default_formatter' => 'component_reference_component',
       // Add entity property info
@@ -58,7 +57,7 @@ function components_reference_field_settings_form($field, $instance, $has_data) 
     '#type' => 'checkboxes',
     '#title' => t('Component types that can be referenced'),
     '#multiple' => TRUE,
-    '#default_value' => $settings['referenceable_types'],
+    '#default_value' => is_array($settings['referenceable_types']) ? $settings['referenceable_types'] : array(),
     '#options' => components_get_types_names(),
   );
   
@@ -266,30 +265,38 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
         
         if ($component_types) {
           $entity_type = $instance['entity_type'];
-          list($entity_id) = entity_extract_ids($entity_type, $form_state[$entity_type]);
-          
-          $component_links = array(
-            'items' => array(),
-            'title' => NULL,
-            'type' => 'ul',
-            'attributes' => array('class' => 'action-links')
-          );
-          
-          foreach ($component_types as $type) {
-            if (isset($component_types_info[$type])) {
-              // @TODO: check access for creating a component of this type
-              $component_links['items'][] = l(
-                $component_types_info[$type]['label'],
-                'component/add/' . $type . '/' . $entity_type . '/' . $entity_id . '/' . $field['field_name'],
-                array('query' => drupal_get_destination())
-              );
+          // @TODO: check if $form_state[$entity_type] ALWAYS works when
+          // it should be, for entity type "node" it's ok...
+          //
+          // Make sure to prevent causing errors related to a call from the
+          // Components Reference Field settings form,
+          // there won't be a $form_state[$entity_type]
+          if (isset($form_state[$entity_type])) {
+            list($entity_id) = entity_extract_ids($entity_type, $form_state[$entity_type]);
+            
+            $component_links = array(
+              'items' => array(),
+              'title' => NULL,
+              'type' => 'ul',
+              'attributes' => array('class' => 'action-links')
+            );
+            
+            foreach ($component_types as $type) {
+              if (isset($component_types_info[$type])) {
+                // @TODO: check access for creating a component of this type
+                $component_links['items'][] = l(
+                  $component_types_info[$type]['label'],
+                  'component/add/' . $type . '/' . $entity_type . '/' . $entity_id . '/' . $field['field_name'],
+                  array('query' => drupal_get_destination())
+                );
+              }
             }
+            
+            $element['add_more_components'] = array(
+              '#type' => 'markup',
+              '#markup' => theme_item_list($component_links),
+            );
           }
-          
-          $element['add_more_components'] = array(
-            '#type' => 'markup',
-            '#markup' => theme_item_list($component_links),
-          );
         }
       }
       break;
@@ -372,8 +379,14 @@ function components_reference_field_get_entity(&$item, $component_type = NULL) {
  */
 function components_reference_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
   if ($form['#field']['type'] == 'component_reference') {
+    // Remove Default Value Widget because it makes no sense.
+    if (isset($form['instance']['default_value_widget'])) {
+      unset($form['instance']['default_value_widget']);
+    }
     // Set the cardinality of the field settings to UNLIMITED by default.
-    $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
+    if (isset($form['field']['cardinality']['#default_value'])) {
+      $form['field']['cardinality']['#default_value'] = FIELD_CARDINALITY_UNLIMITED;
+    }
   }
 }
 
