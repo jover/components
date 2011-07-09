@@ -8,20 +8,6 @@
  * @link http://drupal.org/project/references
  */
 
-/**
- * Implements hook_help().
- */
-function components_reference_help($path, $arg) {
-  switch ($path) {
-    case 'admin/help#components-reference':
-      $output = '';
-      $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Components Reference module provides a field to which a component can be attached.') . '</p>';
-      return $output;
-      break;
-  }
-}
-
 /************************/
 /* Field Type API hooks */
 /************************/
@@ -29,7 +15,7 @@ function components_reference_help($path, $arg) {
 /**
  * Implements hook_field_info().
  */
-function components_reference_field_info() {
+function components_field_info() {
   return array(
     'component_reference' => array(
       'label' => t('Component reference'),
@@ -48,7 +34,7 @@ function components_reference_field_info() {
 /**
  * Implements hook_field_settings_form().
  */
-function components_reference_field_settings_form($field, $instance, $has_data) {
+function components_field_settings_form($field, $instance, $has_data) {
   //$settings = $instance['settings'];
   $settings = $field['settings'];
   
@@ -67,7 +53,7 @@ function components_reference_field_settings_form($field, $instance, $has_data) 
 /**
  * Implements hook_field_validate().
  */
-function components_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, $errors) {
+function components_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, $errors) {
   foreach ($items as $delta => $item) {
     if (!empty($item['cid']) && !is_numeric($item['cid'])) {
       $errors[$field['type']][$langcode][$delta][] = array(
@@ -81,7 +67,7 @@ function components_reference_field_validate($entity_type, $entity, $field, $ins
 /**
  * Implements hook_field_is_empty().
  */
-function components_reference_field_is_empty($item, $field) {
+function components_field_is_empty($item, $field) {
   if (!empty($item['cid'])) {
     return FALSE;
   }
@@ -95,7 +81,7 @@ function components_reference_field_is_empty($item, $field) {
 /**
  * Implements hook_field_formatter_info().
  */
-function components_reference_field_formatter_info() {
+function components_field_formatter_info() {
   return array(
     'component_reference_component' => array(
       'label' => t('Rendered component'),
@@ -111,7 +97,7 @@ function components_reference_field_formatter_info() {
 /**
  * Implements hook_field_formatter_settings_form().
  */
-function components_reference_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
+function components_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   //$settings = $display['instance_settings'];
@@ -144,7 +130,7 @@ function components_reference_field_formatter_settings_form($field, $instance, $
 /**
  * Implements hook_field_formatter_settings_summary().
  */
-function components_reference_field_formatter_settings_summary($field, $instance, $view_mode) {
+function components_field_formatter_settings_summary($field, $instance, $view_mode) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   //$settings = $display['instance_settings'];
@@ -164,10 +150,8 @@ function components_reference_field_formatter_settings_summary($field, $instance
 
 /**
  * Implements hook_field_formatter_prepare_view().
- * 
- * @see node_reference_field_formatter_prepare_view()
  */
-function components_reference_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items, $displays) {
+function components_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items, $displays) {
   // Collect cids to load
   $cids = array();
   foreach ($displays as $id => $display) {
@@ -200,7 +184,7 @@ function components_reference_field_formatter_prepare_view($entity_type, $entiti
 /**
  * Implements hook_field_formatter_view().
  */
-function components_reference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+function components_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $result = array();
   $settings = $display['settings'];
   //$settings = $display['instance_settings'];
@@ -234,9 +218,9 @@ function components_reference_field_formatter_view($entity_type, $entity, $field
 /**
  * Implements hook_field_widget_info().
  */
-function components_reference_field_widget_info() {
+function components_field_widget_info() {
   return array(
-    'component_reference_cid' => array(
+    'component_reference_cid' => array( // only for development purposes
       'label' => t('Component ID'),
       'field types' => array('component_reference'),
     ),
@@ -250,12 +234,12 @@ function components_reference_field_widget_info() {
 /**
  * Implements hook_field_widget_form().
  */
-function components_reference_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+function components_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $base = $element;
   
   switch ($instance['widget']['type']) {
     case 'component_reference_cid':
-    case '2component_reference_embed':
+    case '$component_reference_embed':
       $element['cid'] = array(
         '#type' => 'textfield',
         '#title' => t('Component ID'),
@@ -351,8 +335,8 @@ function components_reference_field_widget_form(&$form, &$form_state, $field, $i
 /**
  * Implements hook_form_alter().
  */
-function components_reference_form_alter(&$form, &$form_state, $form_id) {
-  $field_instances = components_reference_get_field_instances();
+function components_form_alter(&$form, &$form_state, $form_id) {
+  $field_instances = components_get_field_instances();
   
   $field_occurrences = array();
   foreach ($field_instances as $field_instance => $entity_types) {
@@ -385,7 +369,7 @@ function components_reference_form_alter(&$form, &$form_state, $form_id) {
 /**
  * Implements hook_field_widget_error().
  */
-function components_reference_field_widget_error($element, $error, $form, $form_state) {
+function components_field_widget_error($element, $error, $form, $form_state) {
   switch ($error['error']) {
     case 'component_reference_cid_invalid':
       $error_element = $element;
@@ -403,7 +387,7 @@ function components_reference_field_widget_error($element, $error, $form, $form_
  * @return
  *   A component object or FALSE.
  */
-function components_reference_field_get_entity(&$item, $component_type = NULL) {
+function components_field_get_entity(&$item, $component_type = NULL) {
   if (isset($item['cid'])) {
     return component_load($item['cid']);
   }
@@ -420,7 +404,7 @@ function components_reference_field_get_entity(&$item, $component_type = NULL) {
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function components_reference_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
+function components_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
   if ($form['#field']['type'] == 'component_reference') {
     // Remove Default Value Widget because it makes no sense.
     if (isset($form['instance']['default_value_widget'])) {
@@ -441,7 +425,7 @@ function components_reference_form_field_ui_field_edit_form_alter(&$form, &$form
  * Example:
  * array(field_components_reference => array(node => page))
  */
-function components_reference_get_field_instances() {
+function components_get_field_instances() {
   $instances = field_info_instances();
   $field_types = field_info_field_types();
   

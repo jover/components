@@ -1,5 +1,6 @@
 <?php
 
+module_load_include('inc', 'components', 'components.fields');
 module_load_include('inc', 'components', 'components.forms');
 
 /**
@@ -651,7 +652,7 @@ class Component extends Entity {
     parent::delete();
     
     // Delete all references to this component
-    if ($fields = components_reference_get_field_instances()) {
+    if ($fields = components_get_field_instances()) {
       foreach ($fields as $field_name => $entity_data) {
         $query = new EntityFieldQuery();
         $query->fieldCondition($field_name, 'cid', $id, '=');
