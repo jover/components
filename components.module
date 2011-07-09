@@ -262,7 +262,9 @@ function component_load_multiple($cids = array(), $conditions = array(), $reset 
  * @see component_delete_multiple()
  */
 function component_delete($cid) {
-  return component_delete_multiple(array($cid));
+  //return component_delete_multiple(array($cid));
+  $component = component_load($cid);
+  $component->delete();
 }
 
 /**
@@ -272,7 +274,10 @@ function component_delete($cid) {
  *   An array of component IDs.
  */
 function component_delete_multiple($cids = array()) {
-  entity_get_controller('component')->delete($cids);
+  //entity_get_controller('component')->delete($cids);
+  foreach ($cids as $cid) {
+    component_delete($cid);
+  }
 }
 
 /**
@@ -604,8 +609,8 @@ class Component extends Entity {
   }
   
   public function defaultUri() {
-    $cid = $this->internalIdentifier();
-    return ($cid) ? array('path' => 'component/' . $this->internalIdentifier()) : NULL;
+    $cid = $this->identifier();
+    return ($cid) ? array('path' => 'component/' . $this->identifier()) : NULL;
   }
   
   public function save() {
@@ -637,6 +642,35 @@ class Component extends Entity {
     }
     else {
       return entity_get_controller($this->entityType)->save($this);
+    }
+  }
+  
+  public function delete() {
+    $id = $this->identifier();
+    
+    parent::delete();
+    
+    // Delete all references to this component
+    if ($fields = components_reference_get_field_instances()) {
+      foreach ($fields as $field_name => $entity_data) {
+        $query = new EntityFieldQuery();
+        $query->fieldCondition($field_name, 'cid', $id, '=');
+        $results = $query->execute();
+        
+        foreach ($results as $entity_type => $entities) {
+          foreach ($entities as $entity_id => $entity_values) {
+            $entity = entity_load_single($entity_type, $entity_id);
+            foreach ($entity->{$field_name} as $lang => &$data) {
+              foreach ($data as $delta => $item) {
+                if ($item['cid'] == $id) {
+                  unset($data[$delta]);
+                }
+              }
+            }
+            entity_save($entity_type, $entity);
+          }
+        }
+      }
     }
   }
   
