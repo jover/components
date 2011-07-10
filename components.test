@@ -27,35 +27,46 @@ class ComponentsTestCase extends DrupalWebTestCase {
       'administer component types',
     ));
     $this->drupalLogin($this->user);
+  }
+  
+  public function testComponentsCRUDComponent() {
+    $this->createPageNodeComponentsReferenceField();
+    $this->createHeaderComponentHeaderTextField();
     
-    // Create Header component type
-    $component_type = component_type_create(array(
+    $settings = array(
+      'type' => 'page',
+      'title' => 'Test Page',
+    );
+    $node = $this->drupalCreateNode($settings);
+    
+    // Create component
+    $create = array(
       'type' => 'header',
-      'label' => 'Header',
-      'description' => 'Header component'
-    ));
-    component_type_save($component_type);
+      'field_header_text[und][0][value]' => 'Header Text',
+      'host_entity_type' => 'node',
+      'host_entity_id' => $node->nid,
+      'host_entity_field_name' => 'field_components',
+    );
+    $this->drupalPost('component/add/header/node/' . $node->nid . '/field_components', $create, t('Save'));
+    $node = node_load($node->nid);
+    $this->assertEqual($node->field_components[LANGUAGE_NONE][0]['cid'], '1', t('Component created.'));
     
-    // Add a field to the Header component
-    $field = array(
-      'field_name' => 'field_header',
-      'type' => 'text',
-      'cardinality' => 1,
-      'translatable' => TRUE,
+    // Update component
+    $update = array(
+      'cid' => '1',
+      'type' => 'header',
+      'field_header_text[und][0][value]' => 'Header Text Updated',
     );
-    field_create_field($field);
-    $instance = array(
-      'entity_type' => 'node',
-      'bundle' => 'page',
-      'field_name' => 'field_header',
-      'label' => 'Header',
-      'description' => 'Header text',
-      'widget' => array(
-        'type' => 'text_textfield',
-        'weight' => 0,
-      ),
+    $this->drupalPost('component/' . $update['cid'] . '/edit', $update, t('Save'));
+    $component = component_load($update['cid']);
+    $this->assertEqual($component->field_header_text[LANGUAGE_NONE][0]['value'], $update['field_header_text[und][0][value]'], t('Component updated.'));
+    
+    // Delete component
+    $delete = array(
+      'cid' => '1',
     );
-    field_create_instance($instance);
+    $this->drupalPost('component/' . $delete['cid'] . '/delete', $delete, t('Delete'));
+    $this->assertNull(component_load($delete['cid']), t('Component deleted.'));
   }
   
   public function testComponentsCRUDComponentType() {
@@ -66,20 +77,121 @@ class ComponentsTestCase extends DrupalWebTestCase {
       'description' => 'Paragraph component',
     );
     $this->drupalPost('admin/structure/component-types/add', $create, t('Save'));
-    //$this->assertText(t('Component Type @type has been created.', array('@type' => $create['label'])));
+    $this->assertNotNull(component_type_load($create['type']), t('Component Type created.'));
     
     // Update component type
     $update = array(
-      'type' => 'paragraph',
-      'label' => 'Paragraph',
-      'description' => 'Paragraph component',
+      'type' => 'paragraph_text',
+      'label' => 'Paragraph Text',
+      'description' => 'Paragraph Text component',
     );
     $this->drupalPost('admin/structure/component-types/manage/' . $create['type'], $update, t('Save'));
-    //$this->assertText(t('Component Type @type has been updated.', array('@type' => $update['label'])));
+    $this->assertNotNull(component_type_load($update['type']), t('Component Type updated.'));
     
     // Delete component type
-    $this->drupalPost('admin/structure/component-types/manage/' . $update['type'] . '/delete', $update, t('Confirm'));
-    $this->assertText(t('Deleted Component type @type.', array('@type' => $update['label'])));
+    $delete = array(
+      'type' => 'paragraph_text',
+      'confirm' => '1',
+    );
+    $this->drupalPost('admin/structure/component-types/manage/' . $delete['type'] . '/delete', $delete, t('Confirm'));
+    $this->assertNull(component_type_load($delete['type']), t('Component Type deleted.'));
+  }
+  
+  /********************/
+  /* Custom Functions */
+  /********************/
+  
+  protected function createPageNodeComponentsReferenceField() {
+    if (!field_info_field('field_components')) {
+      field_create_field(array(
+        'field_name' => 'field_components',
+        'label' => t('Components'),
+        'type' => 'component_reference',
+        'entity_types' => array('node'),
+        'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+        'translatable' => TRUE,
+        'locked' => FALSE,
+        'settings' => array(
+          'referenceable_types' => array(),
+        ),
+      ));
+    }
+    
+    if (!field_info_instance('node', 'field_components', 'page')) {
+      field_create_instance(array(
+        'field_name' => 'field_components',
+        'label' => t('Components'),
+        'entity_type' => 'node',
+        'bundle' => 'page',
+        'description' => t('A reference to a component.'),
+        'required' => FALSE,
+        'settings' => array(),
+        'widget' => array(
+          'type' => 'component_reference_embed',
+          'settings' => array(),
+          'weight' => -1,
+        ),
+        'display' => array(
+          'default' => array(
+            'label' => 'hidden',
+            'type' => 'component_reference_component',
+            'settings' => array('component_reference_view_mode' => 'default'),
+            'weight' => -1,
+          ),
+        ),
+      ));
+    }
+  }
+  
+  protected function createHeaderComponent() {
+    if (!components_get_types('header')) {
+      component_type_save(
+        component_type_create(array(
+          'type' => 'header',
+          'label' => 'Header',
+          'description' => 'Header component',
+        ))
+      );
+    }
+  }
+  
+  protected function createHeaderComponentHeaderTextField() {
+    if (!components_get_types('header')) {
+      $this->createHeaderComponent();
+    }
+    
+    if (!field_info_field('field_header_text')) {
+      field_create_field(array(
+        'field_name' => 'field_header_text',
+        'label' => t('Header text'),
+        'type' => 'text',
+        'entity_types' => array('component'),
+        'cardinality' => 1,
+        'translatable' => TRUE,
+        'locked' => TRUE,
+      ));
+    }
+    
+    if (!field_info_instance('component', 'field_header_text', 'header')) {
+      field_create_instance(array(
+        'field_name' => 'field_header_text',
+        'label' => t('Header text'),
+        'entity_type' => 'component',
+        'bundle' => 'header',
+        'description' => t('Header text'),
+        'required' => TRUE,
+        'widget' => array(
+          'type' => 'text_textfield',
+          'weight' => -1,
+        ),
+        'display' => array(
+          'default' => array(
+            'label' => 'hidden',
+            'weight' => -1,
+          ),
+        ),
+      ));
+    }
   }
   
 }
