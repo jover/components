@@ -63,7 +63,7 @@ class ComponentTypeUIController extends EntityDefaultUIController {
         'style_name' => 'thumbnail', // @TODO: create custom image styles for sample images (component_type_sample_image & component_type_sample_image_thumbnail)
         'path' => $image['uri'],
         'alt' => t('@label sample image', array('@label' => $entity->label)),
-      	'title' => t('@title sample image', array('@title' => $entity->label)),
+        'title' => t('@title sample image', array('@title' => $entity->label)),
       );
       $additional_cols[] = theme_image_style($image_vars);
     }

@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * @file
+ * Components tests
+ */
+
+class ComponentsTestCase extends DrupalWebTestCase {
+  
+  protected $user;
+  
+  public static function getInfo() {
+    return array(
+      'name' => 'Components',
+      'description' => 'Testing all components functionality if it works properly.',
+      'group' => 'Components',
+    );
+  }
+  
+  public function setUp() {
+    // Enable any modules required for the test
+    parent::setUp('components');
+    
+    // Create and log in our user
+    $this->user = $this->drupalCreateUser(array(
+      'administer components',
+      'administer component types',
+    ));
+    $this->drupalLogin($this->user);
+    
+    // Create Header component type
+    $component_type = component_type_create(array(
+      'type' => 'header',
+      'label' => 'Header',
+      'description' => 'Header component'
+    ));
+    component_type_save($component_type);
+    
+    // Add a field to the Header component
+    $field = array(
+      'field_name' => 'field_header',
+      'type' => 'text',
+      'cardinality' => 1,
+      'translatable' => TRUE,
+    );
+    field_create_field($field);
+    $instance = array(
+      'entity_type' => 'node',
+      'bundle' => 'page',
+      'field_name' => 'field_header',
+      'label' => 'Header',
+      'description' => 'Header text',
+      'widget' => array(
+        'type' => 'text_textfield',
+        'weight' => 0,
+      ),
+    );
+    field_create_instance($instance);
+  }
+  
+  public function testComponentsCRUDComponentType() {
+    // Create component type
+    $create = array(
+      'type' => 'paragraph',
+      'label' => 'Paragraph',
+      'description' => 'Paragraph component',
+    );
+    $this->drupalPost('admin/structure/component-types/add', $create, t('Save'));
+    //$this->assertText(t('Component Type @type has been created.', array('@type' => $create['label'])));
+    
+    // Update component type
+    $update = array(
+      'type' => 'paragraph',
+      'label' => 'Paragraph',
+      'description' => 'Paragraph component',
+    );
+    $this->drupalPost('admin/structure/component-types/manage/' . $create['type'], $update, t('Save'));
+    //$this->assertText(t('Component Type @type has been updated.', array('@type' => $update['label'])));
+    
+    // Delete component type
+    $this->drupalPost('admin/structure/component-types/manage/' . $update['type'] . '/delete', $update, t('Confirm'));
+    $this->assertText(t('Deleted Component type @type.', array('@type' => $update['label'])));
+  }
+  
+}

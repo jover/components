@@ -257,7 +257,7 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
           );
           
           $component_links = array(
-         	'items' => array(),
+            'items' => array(),
             'title' => NULL,
             'type' => 'ul',
             'attributes' => array('class' => 'action-links')
