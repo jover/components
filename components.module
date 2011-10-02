@@ -46,13 +46,22 @@ function components_menu() {
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );*/
-  $items['component/add/%/%/%/%'] = array(
+  /*$items['component/add/%/%/%/%'] = array(
     'title' => 'Create new component',
     'page callback' => 'component_add',
     'page arguments' => array(2, 3, 4, 5),
     'access arguments' => array('administer components'),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );*/
+  $items['component/add/%/%/%/ajax'] = array(
+    'page callback' => 'component_add_ajax',
+    'page arguments' => array(2, 3, 4),
+    'access arguments' => array('administer components'),
+    //'access callback' => TRUE,
+    'delivery callback' => 'ajax_deliver',
+    'theme callback' => 'ajax_base_page_theme',
+    'type' => MENU_CALLBACK,
   );
   
   // @TODO: access arguments 'edit any $type component'
@@ -326,10 +335,27 @@ function component_add($type, $entity_type, $entity_id, $field_name) {
   // @TODO: check permission to create a component
   return drupal_get_form('component_form', $component, $entity_type, $entity_id, $field_name);
 }
-/*function component_add($type) {
-  drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
-  return drupal_get_form('component_form', component_create(array('type' => $type)));
-}*/
+
+function component_add_ajax($component_type, $field_item_container_id, $field_item_cid_id) {
+  $component = component_create(array('type' => $component_type));
+  
+  // @TODO: check permission to create a component
+  $form = drupal_get_form('component_form_ajax', $component);
+  
+  $commands = array();
+  $commands[] = array(
+    'command' => 'componentsAddComponentDialog',
+    'output' => drupal_render($form),
+    'title' => t('Create new %type component', array('%type' => component_type_get_label_by_type($component_type))),
+    'url' => '',
+    'id' => $field_item_container_id,
+  );
+  
+  return array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
+}
 
 function component_edit($component) {
   drupal_set_title(t('Edit %type component', array('%type' => component_type_get_label_by_type($component->type))), PASS_THROUGH);

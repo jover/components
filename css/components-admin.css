@@ -1,0 +1,46 @@
+.components-popup-dialog {
+  /* We need this so the button is visible. */
+  overflow: visible;
+  position: fixed;
+}
+
+.components-popup-dialog .ui-dialog-titlebar-close {
+  border: 1px solid transparent;
+  display: block;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  right: 0;
+  top: 2px;
+  /* Make sure this is in front of the modal backdrop. */
+  z-index: 1002;
+}
+
+.components-popup-dialog .ui-dialog-titlebar {
+  padding: 0;
+  margin: 0;
+}
+
+.components-popup-dialog .ui-dialog-title {
+  display: none;
+}
+
+.components-popup-dialog #components-popup {
+  padding: 0;
+  overflow: hidden;
+}
+
+.components-popup-dialog #components-popup-title,
+.components-popup-dialog #components-popup-body {
+  margin: 0;
+  padding: 0;
+}
+
+.components-popup-dialog #components-popup {
+  overflow: hidden;
+}
+
+.components-popup-dialog .scroll {
+  max-height: 400px;
+  overflow: auto;
+}

@@ -53,6 +53,38 @@ function component_form($form, &$form_state, $component, $entity_type = NULL, $e
   
   return $form;
 }
+function component_form_ajax($form, &$form_state, $component) {
+  $form['type'] = array(
+    '#type' => 'hidden',
+    '#value' => $component->type,
+  );
+  
+  $form['actions'] = array('#type' => 'actions', '#weight' => 1000);
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#submit' => array('component_form_submit'),
+  );
+  
+  // @TODO: access arguments 'delete any $type component'
+  if (!empty($component->cid)) {
+    $form['cid'] = array( // component_save() needs this to determine it's an existing component
+      '#type' => 'hidden',
+      '#value' => $component->cid,
+    );
+    
+    $form['actions']['delete'] = array(
+      '#type' => 'submit',
+      '#value' => t('Delete'),
+      '#submit' => array('component_form_delete_submit'),
+      //'#access' => user_access('delete any $type component'),
+    );
+  }
+  
+  field_attach_form('component', $component, $form, $form_state);
+  
+  return $form;
+}
 
 function component_form_validate($form, &$form_state) {
   $component = component_create($form_state['values']);
