@@ -391,21 +391,10 @@ function components_form_alter(&$form, &$form_state, $form_id) {
     'type' => 'setting',
   );
   
-  // The content of the popup dialog.
   $form['components-popup'] = array(
-    '#theme_wrappers' => array('container'),
-    '#id' => 'components-popup',
+    //'#theme_wrappers' => array('components_popup'),
+    '#theme' => 'components_popup',
     '#weight' => 9999,
-  );
-  
-  $form['components-popup']['components-popup-title'] = array(
-    '#markup' => '<h2 id="components-popup-title"></h2>',
-  );
-  
-  $form['components-popup']['components-popup-body'] = array(
-    '#theme_wrappers' => array('container'),
-    '#id' => 'components-popup-body',
-    '#markup' => 'TEST',
   );
 }
 

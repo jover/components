@@ -340,7 +340,7 @@ function component_add_ajax($component_type, $field_item_container_id, $field_it
   $component = component_create(array('type' => $component_type));
   
   // @TODO: check permission to create a component
-  $form = drupal_get_form('component_form_ajax', $component);
+  $form = drupal_get_form('component_ajax_form', $component);
   
   $commands = array();
   $commands[] = array(
@@ -593,6 +593,11 @@ function components_theme() {
       'render element' => 'elements',
       'path' => drupal_get_path('module', 'components') . '/theme',
       'template' => 'component',
+    ),
+    'components_popup' => array(
+      'render element' => 'element',
+      'path' => drupal_get_path('module', 'components') . '/theme',
+      'template' => 'components-popup',
     ),
   );
 }

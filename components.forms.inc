@@ -53,7 +53,29 @@ function component_form($form, &$form_state, $component, $entity_type = NULL, $e
   
   return $form;
 }
-function component_form_ajax($form, &$form_state, $component) {
+
+function component_form_validate($form, &$form_state) {
+  $component = component_create($form_state['values']);
+  $form_state['entity'] = $component;
+  
+  // Field validation
+  field_attach_form_validate('component', $component, $form, $form_state);
+}
+
+function component_form_submit($form, &$form_state) {
+  $component = $form_state['entity'];
+  
+  // Notify field widgets
+  field_attach_submit('component', $component, $form, $form_state);
+  
+  // Save the component
+  component_save($component);
+  
+  drupal_set_message(t('The changes have been saved.'));
+  $form_state['redirect'] = $component->defaultUri();
+}
+
+function component_ajax_form($form, &$form_state, $component) {
   $form['type'] = array(
     '#type' => 'hidden',
     '#value' => $component->type,
@@ -63,7 +85,10 @@ function component_form_ajax($form, &$form_state, $component) {
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save'),
-    '#submit' => array('component_form_submit'),
+    '#submit' => array('component_ajax_form_submit'),
+    '#ajax' => array(
+      'callback' => 'component_ajax_form_callback',
+    ),
   );
   
   // @TODO: access arguments 'delete any $type component'
@@ -86,7 +111,11 @@ function component_form_ajax($form, &$form_state, $component) {
   return $form;
 }
 
-function component_form_validate($form, &$form_state) {
+function component_ajax_form_callback($form, $form_state) {
+  return $form;
+}
+
+function component_ajax_form_validate($form, &$form_state) {
   $component = component_create($form_state['values']);
   $form_state['entity'] = $component;
   
@@ -94,7 +123,7 @@ function component_form_validate($form, &$form_state) {
   field_attach_form_validate('component', $component, $form, $form_state);
 }
 
-function component_form_submit($form, &$form_state) {
+function component_ajax_form_submit($form, &$form_state) {
   $component = $form_state['entity'];
   
   // Notify field widgets
@@ -104,7 +133,7 @@ function component_form_submit($form, &$form_state) {
   component_save($component);
   
   drupal_set_message(t('The changes have been saved.'));
-  $form_state['redirect'] = $component->defaultUri();
+  $form_state['rebuild'] = TRUE;
 }
 
 // @TODO: check if destination works

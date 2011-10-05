@@ -19,7 +19,7 @@ class ComponentTypeUIController extends EntityDefaultUIController {
     return $items;
   }
   
-/**
+  /**
    * Generates the render array for a overview table for arbitrary entities
    * matching the given conditions.
    *
@@ -45,7 +45,7 @@ class ComponentTypeUIController extends EntityDefaultUIController {
     return $table;
   }
   
-/**
+  /**
    * Generates the row for the passed entity and may be overridden in order to
    * customize the rows.
    *

@@ -14,7 +14,27 @@
     $(popup_title).html(response.title);
     $(popup_body).html(response.output);
     $(popup_popup).dialog('open');
-    $('#' + id).remove();
+    Drupal.attachBehaviors($(ajax_popup), ajax.settings);
+    if (response.url) {
+      // Identify the button that was clicked so that .ajaxSubmit() can use it.
+      // We need to do this for both .click() and .mousedown() since JavaScript
+      // code might trigger either behavior.
+      var $submit_buttons = $('input[type=submit]', ajax_body);
+      $submit_buttons.click(function(event) {
+        this.form.clk = this;
+      });
+      $submit_buttons.mousedown(function(event) {
+        this.form.clk = this;
+      });
+
+      $('form', ajax_body).once('components-ajax-submit-processed').each(function() {
+        var element_settings = { 'url': response.url, 'event': 'submit', 'progress': { 'type': 'throbber' } };
+        var $form = $(this);
+        var id = $form.attr('id');
+        Drupal.ajax[id] = new Drupal.ajax(id, this, element_settings);
+        Drupal.ajax[id].form = $form;
+      });
+    }
     Drupal.components.resizeModal();
   };
   
