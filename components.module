@@ -54,13 +54,11 @@ function components_menu() {
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
   );*/
-  $items['component/add/%/%/%/ajax'] = array(
-    'page callback' => 'component_add_ajax',
-    'page arguments' => array(2, 3, 4),
+  $items['component/add/%/%/%/%ctools_js'] = array( // component/add/entity_type/entity_id/field_name/ajax
+    'title' => 'Add component', // @TODO: title callback
+    'page callback' => 'component_add',
+    'page arguments' => array(2, 3, 4, 5),
     'access arguments' => array('administer components'),
-    //'access callback' => TRUE,
-    'delivery callback' => 'ajax_deliver',
-    'theme callback' => 'ajax_base_page_theme',
     'type' => MENU_CALLBACK,
   );
   
@@ -300,7 +298,7 @@ function component_access($op, $entity_type) {
 }
 
 // @TODO: security concerning the type and error message
-function component_add($type, $entity_type, $entity_id, $field_name) {
+function component_add_orig($type, $entity_type, $entity_id, $field_name) {
   // Check wheter the given entity_type exists
   $info = entity_get_info();
   if (!isset($info[$entity_type])) {
@@ -336,25 +334,199 @@ function component_add($type, $entity_type, $entity_id, $field_name) {
   return drupal_get_form('component_form', $component, $entity_type, $entity_id, $field_name);
 }
 
-function component_add_ajax($component_type, $field_item_container_id, $field_item_cid_id) {
-  $component = component_create(array('type' => $component_type));
+function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step = NULL) {
+  if ($js) {
+    ctools_include('modal');
+    ctools_include('ajax');
+  }
   
-  // @TODO: check permission to create a component
-  $form = drupal_get_form('component_ajax_form', $component);
-  
-  $commands = array();
-  $commands[] = array(
-    'command' => 'componentsAddComponentDialog',
-    'output' => drupal_render($form),
-    'title' => t('Create new %type component', array('%type' => component_type_get_label_by_type($component_type))),
-    'url' => '',
-    'id' => $field_item_container_id,
+  $form_info = array(
+    'id' => 'component-add',
+    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
+    'show trail' => TRUE,
+    'show back' => TRUE,
+    'show cancel' => TRUE,
+    'show return' => FALSE,
+    'next callback' =>  'component_add_wizard_next',
+    'finish callback' => 'component_add_wizard_finish',
+    'cancel callback' => 'component_add_wizard_cancel',
+    // this controls order, as well as form labels
+    'order' => array(
+      'start' => t('Choose component type'),
+    ),
+    // here we map a step to a form id.
+    'forms' => array(
+      // e.g. this for the step at wombat/create
+      'start' => array(
+        'form id' => 'component_add_start',
+      ),
+    ),
   );
   
-  return array(
-    '#type' => 'ajax',
-    '#commands' => $commands,
+  $component_id = 1;
+  
+  if (empty($step)) {
+    // We reset the form when $step is NULL because that means they have
+    // for whatever reason started over.
+    component_add_cache_clear($component_id);
+    $step = 'start';
+  }
+  
+  // This automatically gets defaults if there wasn't anything saved.
+  $component = component_add_cache_get($component_id);
+  
+  $component_types = components_get_types_names();
+  
+  // Make sure we can't somehow accidentally go to an invalid animal.
+  if (empty($component_types[$component->type])) {
+    $component->type = 'unknown';
+  }
+  
+  // Now that we have our object, dynamically add the animal's form.
+  if ($component->type == 'unknown') {
+    // If they haven't selected a type, add a form that doesn't exist yet.
+    $form_info['order']['unknown'] = t('Configure component');
+    $form_info['forms']['unknown'] = array('form id' => 'nothing');
+  }
+  else {
+    // Add the selected component type to the order so that it shows up properly in the trail.
+    $form_info['order'][$component->type] = $component_types[$component->type];
+  }
+  
+  foreach ($component_types as $type => $label) {
+    $form_info['forms'][$type] = array(
+      'form id' => $type . '_component_ajax_form',
+      //'include' => drupal_get_path('module', 'components') . '/components.forms.inc',
+    );
+  }
+  
+  $form_state = array(
+    'ajax' => $js,
+    // Put our component and ID into the form state cache so we can easily find it.
+    'component_id' => $component_id,
+    'component' => &$component,
+    'host_entity_type' => $entity_type,
+    'host_entity_id' => $entity_id,
+    'host_field_name' => $field_name,
   );
+  
+  // Send this all off to our form. This is like drupal_get_form only wizardy.
+  ctools_include('wizard');
+  $form = ctools_wizard_multistep_form($form_info, $step, $form_state);
+  $output = drupal_render($form);
+  
+  // If $output is FALSE, there was no actual form.
+  if ($js) {
+    // If javascript is active, we have to use a render array.
+    $commands = array();
+    if ($output === FALSE || !empty($form_state['complete'])) {
+      // Dismiss the modal.
+      $commands[] = ctools_modal_command_dismiss();
+    }
+    else if (!empty($form_state['cancel'])) {
+      // If cancelling, return to the activity.
+      $commands[] = ctools_modal_command_dismiss();
+    }
+    else {
+      $commands = ctools_modal_form_render($form_state, $output);
+    }
+    print ajax_render($commands);
+    exit;
+  }
+  else {
+    if ($output === FALSE || !empty($form_state['complete'])) {
+      return $animal;
+    }
+    else if (!empty($form_state['cancel'])) {
+      // @TODO: change node to appropriate entity type
+      drupal_goto('node/' . $entity_id);
+    }
+    else {
+      return $output;
+    }
+  }
+}
+
+/**
+ * Store our little cache so that we can retain data from form to form.
+ */
+function component_add_cache_set($id, $component) {
+  ctools_include('object-cache');
+  ctools_object_cache_set('component_add', $id, $component);
+}
+
+/**
+ * Get the current object from the cache, or default.
+ */
+function component_add_cache_get($id) {
+  ctools_include('object-cache');
+  $component = ctools_object_cache_get('component_add', $id);
+  if (!$component) {
+    // Create a default component.
+    $component = new stdClass();
+    $component->type = 'unknown';
+  }
+
+  return $component;
+}
+
+/**
+ * Clear the wizard cache.
+ */
+function component_add_cache_clear($id) {
+  ctools_include('object-cache');
+  ctools_object_cache_clear('component_add', $id);
+}
+
+/**
+ * Handle the 'next' click on the add/edit pane form wizard.
+ *
+ * All we need to do is store the updated pane in the cache.
+ */
+function component_add_wizard_next(&$form_state) {
+  component_add_cache_set($form_state['component_id'], $form_state['component']);
+}
+
+/**
+ * Handle the 'finish' click on teh add/edit pane form wizard.
+ *
+ * All we need to do is set a flag so the return can handle adding
+ * the pane.
+ */
+function component_add_wizard_finish(&$form_state) {
+  $form_state['complete'] = TRUE;
+}
+
+/**
+ * Handle the 'cancel' click on the add/edit pane form wizard.
+ */
+function component_add_wizard_cancel(&$form_state) {
+  $form_state['cancel'] = TRUE;
+}
+
+function component_add_start($form, &$form_state) {
+  $form_state['title'] = t('Choose component type');
+  $options = array();
+  
+  foreach (components_get_types_names() as $type => $label) {
+    $options[$type] = $label;
+  }
+  
+  $form['type'] = array(
+    '#title' => t('Choose component type'),
+    '#type' => 'radios',
+    '#options' => $options,
+    '#default_value' => $form_state['component']->type,
+    '#required' => TRUE,
+  );
+  
+  return $form;
+}
+
+function component_add_start_submit(&$form, &$form_state) {
+  $form_state['component']->type = $form_state['values']['type'];
+  // Override where to go next based on the component type selected.
+  $form_state['clicked_button']['#next'] = $form_state['values']['type'];
 }
 
 function component_edit($component) {

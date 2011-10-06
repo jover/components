@@ -365,6 +365,19 @@ function components_form_alter(&$form, &$form_state, $form_id) {
       
       // Remove the "Add another item"-button from the form
       //unset($field[$language]['add_more']);
+      $field[$language]['add_more_url'] = array(
+        '#type' => 'hidden',
+        // The name of the class is the #id of $field[$language]['add_more'] with "-url" suffix.
+        '#attributes' => array('class' => array('component-add-url')),
+        '#value' => url('component/add/' . $entity_type . '/1/' . $field[$language]['#field_name'] . '/nojs'),
+      );
+      
+      unset($field[$language]['add_more']['#ajax']);
+      unset($field[$language]['add_more']['#submit']);
+      $field[$language]['add_more']['#type'] = 'button';
+      $field[$language]['add_more']['#id'] = 'component-add';
+      $field[$language]['add_more']['#value'] = t('Add component');
+      $field[$language]['add_more']['#attributes']['class'][] = 'ctools-use-modal';
       
       // Do not show an extra empty field
       $max_delta = $field[$language]['#max_delta'];
@@ -375,7 +388,13 @@ function components_form_alter(&$form, &$form_state, $form_id) {
     }
   }
   
-  $form['#attached']['library'][] = array('system', 'ui.dialog');
+  // Include the CTools tools that we need.
+  ctools_include('ajax');
+  ctools_include('modal');
+  // Add CTools' javascript to the page.
+  ctools_modal_add_js();
+  
+  /*$form['#attached']['library'][] = array('system', 'ui.dialog');
   $form['#attached']['library'][] = array('system', 'drupal.ajax');
   $form['#attached']['library'][] = array('system', 'jquery.form');
   
@@ -395,7 +414,7 @@ function components_form_alter(&$form, &$form_state, $form_id) {
     //'#theme_wrappers' => array('components_popup'),
     '#theme' => 'components_popup',
     '#weight' => 9999,
-  );
+  );*/
 }
 
 /**
