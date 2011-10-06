@@ -1,6 +1,7 @@
 name = Components
 description = The Components module provides components as entities.
 core = 7.x
+dependencies[] = ctools
 dependencies[] = entity
 dependencies[] = field
 files[] = components.admin.inc

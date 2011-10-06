@@ -127,7 +127,7 @@ class ComponentsTestCase extends DrupalWebTestCase {
         'required' => FALSE,
         'settings' => array(),
         'widget' => array(
-          'type' => 'component_reference_embed',
+          'type' => 'component_builder',
           'settings' => array(),
           'weight' => -1,
         ),

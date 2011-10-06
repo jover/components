@@ -23,7 +23,7 @@ function components_field_info() {
       'settings' => array( // instance_settings
         'referenceable_types' => array(),
       ),
-      'default_widget' => 'component_reference_cid',
+      'default_widget' => 'component_builder',
       'default_formatter' => 'component_reference_component',
       // Add entity property info
       'property_type' => 'component',
@@ -57,7 +57,7 @@ function components_field_validate($entity_type, $entity, $field, $instance, $la
   foreach ($items as $delta => $item) {
     if (!empty($item['cid']) && !is_numeric($item['cid'])) {
       $errors[$field['type']][$langcode][$delta][] = array(
-        'error' => 'component_reference_cid_invalid',
+        'error' => 'component_builder_invalid',
         'message' => t('%label: invalid input.', array('%label' => $instance['label'])),
       );
     }
@@ -221,8 +221,8 @@ function components_field_widget_info() {
       'label' => t('Component ID'),
       'field types' => array('component_reference'),
     ),
-    'component_reference_embed' => array(
-      'label' => t('Component Embedded'),
+    'component_builder' => array(
+      'label' => t('Component Builder'),
       'field types' => array('component_reference'),
     ),
   );
@@ -242,11 +242,7 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
         '#default_value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
       ) + $base; // @TODO: $base?
       break;
-    case 'component_reference_embed':
-      $field_item_name = $field['field_name'] . '-' . $langcode . '-' . $delta;
-      $field_item_container_id = drupal_html_id($field_item_name . '-container');
-      $field_item_cid_id = drupal_html_id($field_item_name . '-cid');
-      
+    case 'component_builder':
       if (isset($items[$delta]['cid'])) {
         if ($component = component_load($items[$delta]['cid'])) {
           $element['component-' . $component->cid] = array(
@@ -254,7 +250,7 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
             '#markup' => drupal_render(component_view($component)),
           );
           
-          $component_links = array(
+          /*$component_links = array(
             'items' => array(),
             'title' => NULL,
             'type' => 'ul',
@@ -270,11 +266,10 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
           $element['component-' . $component->cid . '-delete'] = array(
             '#type' => 'markup',
             '#markup' => theme_item_list($component_links),
-          );
+          );*/
           
           $element['cid'] = array(
-            //'#type' => 'hidden',
-            '#type' => 'textfield',
+            '#type' => 'hidden',
             '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
           ) + $base; // @TODO: $base?
         }
@@ -283,49 +278,6 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
             '#type' => 'markup',
             '#markup' => t('The component with cid=@cid cannot be found.', array('@cid' => $items[$delta]['cid'])),
           );
-        }
-      }
-      else {
-        if ($component_types = $field['settings']['referenceable_types']) {
-          $component_types_info = field_info_bundles('component');
-          
-          $element['component-container'] = array(
-            '#type' => 'container',
-            '#id' => $field_item_container_id,
-          );
-            
-          $component_links = array(
-            'items' => array(),
-            'title' => NULL,
-            'type' => 'ul',
-            'attributes' => array('class' => 'action-links')
-          );
-          
-          foreach ($component_types as $type) {
-            if (isset($component_types_info[$type])) {
-              // @TODO: check access for creating a component of this type
-              $component_links['items'][] = l(
-                $component_types_info[$type]['label'],
-                //'component/add/' . $type . '/' . $entity_type . '/' . $entity_id . '/' . $field['field_name'],
-                //array('query' => drupal_get_destination())
-                'component/add/' . $type . '/' . $field_item_container_id . '/' . $field_item_cid_id . '/nojs/',
-                array('attributes' => array('class' => 'use-ajax'))
-              );
-            }
-          }
-          
-          $element['component-container']['components_links'] = array(
-            '#type' => 'markup',
-            '#markup' => theme_item_list($component_links),
-          );
-          
-          $element['cid'] = array(
-            //'#type' => 'hidden',
-            '#type' => 'textfield',
-            '#value' => NULL,
-            '#prefix' => '<div id="' . $field_item_cid_id . '">',
-            '#suffix' => '</div>',
-          ) + $base; // @TODO: $base?
         }
       }
       break;
@@ -356,29 +308,32 @@ function components_form_alter(&$form, &$form_state, $form_id) {
     return;
   }
   
+  $entity_type = $form['#entity_type'];
+  $entity = $form_state[$entity_type];
+  
   foreach ($field_occurrences as $field_instance) {
     if (isset($form[$field_instance])) {
-      $entity_type = $form['#entity_type'];
-      $bundle = $form['#bundle'];
       $field = &$form[$field_instance];
       $language = $field['#language'];
       
-      // Remove the "Add another item"-button from the form
-      //unset($field[$language]['add_more']);
-      $field[$language]['add_more_url'] = array(
+      unset($field[$language]['add_more']);
+      
+      $field[$language]['add_more']['url'] = array(
         '#type' => 'hidden',
-        // The name of the class is the #id of $field[$language]['add_more'] with "-url" suffix.
+        // The name of the class is the #id of $field[$language]['add_more']['button] with "-url" suffix.
         '#attributes' => array('class' => array('component-add-url')),
         '#value' => url('component/add/' . $entity_type . '/1/' . $field[$language]['#field_name'] . '/nojs'),
       );
       
-      unset($field[$language]['add_more']['#ajax']);
-      unset($field[$language]['add_more']['#submit']);
-      $field[$language]['add_more']['#type'] = 'button';
-      $field[$language]['add_more']['#id'] = 'component-add';
-      $field[$language]['add_more']['#value'] = t('Add component');
-      $field[$language]['add_more']['#attributes']['class'][] = 'ctools-use-modal';
-      //$field[$language]['add_more']['#attributes']['class'][] = 'ctools-modal-components-style';
+      $field[$language]['add_more']['button'] = array(
+        '#type' => 'button',
+        '#value' => t('Add component'),
+        '#id' => 'component-add',
+        '#attributes' => array('class' => array(
+          'ctools-use-modal',
+          'ctools-modal-components-style',
+        )),
+      );
       
       // Do not show an extra empty field
       $max_delta = $field[$language]['#max_delta'];
@@ -427,7 +382,7 @@ function components_form_alter(&$form, &$form_state, $form_id) {
  */
 function components_field_widget_error($element, $error, $form, $form_state) {
   switch ($error['error']) {
-    case 'component_reference_cid_invalid':
+    case 'component_builder_invalid':
       $error_element = $element;
       break;
     default:
@@ -499,36 +454,4 @@ function components_get_field_instances() {
   }
   
   return $fields;
-}
-
-/**
- * Create an array of Views admin CSS for adding or attaching.
- *
- * This returns an array of arrays. Each array represents a single
- * file. The array format is:
- * - file: The fully qualified name of the file to send to drupal_add_css
- * - options: An array of options to pass to drupal_add_css.
- * 
- * @see views_ui_get_admin_css()
- */
-function components_get_admin_css() {
-  $module_path = drupal_get_path('module', 'components');
-  $list = array();
-  $list[$module_path . '/css/components-admin.css'] = array();
-  $list[$module_path . '/css/components-admin.theme.css'] = array();
-  
-  // Add in any theme specific CSS files we have
-  $themes = list_themes();
-  $theme_key = $GLOBALS['theme'];
-  while ($theme_key) {
-    $css_file = $module_path . '/css/components-admin.' . $theme_key . '.css';
-    if (file_exists($css_file)) {
-      $list[$css_file] = array(
-        'group' => CSS_THEME,
-      );
-    }
-    $theme_key = isset($themes[$theme_key]->base_theme) ? $themes[$theme_key]->base_theme : '';
-  }
-  
-  return $list;
 }

@@ -1,5 +1,8 @@
 The Components module provides components as entities, and thus are fieldable.
-Using the attached Component References module, you can add components to any other entity.
+Components can be added to an entity via the component reference field.
+This field has a component builder widget which allows to create new components on the fly.
 
 Dependencies:
+- CTools
 - Entity API
+- Field

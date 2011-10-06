@@ -1,12 +1,14 @@
 <?php
 
-module_load_include('inc', 'components', 'components.fields');
-module_load_include('inc', 'components', 'components.forms');
-
 /**
  * @file
  * Module file for the components module.
  */
+
+$module_path = drupal_get_path('module', 'components');
+
+module_load_include('inc', 'components', 'components.fields');
+module_load_include('inc', 'components', 'components.forms');
 
 /**
  * Implements hook_help().
@@ -38,28 +40,13 @@ function components_menu() {
   
   // @TODO: title callback with type name
   // @TODO: access arguments 'create any $type component'
-  /*$items['component/add/%'] = array(
-    'title' => 'Create new component',
-    'page callback' => 'component_add',
-    'page arguments' => array(2),
-    'access arguments' => array('administer components'),
-    'type' => MENU_LOCAL_TASK,
-    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-  );*/
-  /*$items['component/add/%/%/%/%'] = array(
-    'title' => 'Create new component',
-    'page callback' => 'component_add',
-    'page arguments' => array(2, 3, 4, 5),
-    'access arguments' => array('administer components'),
-    'type' => MENU_LOCAL_TASK,
-    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
-  );*/
   $items['component/add/%/%/%/%ctools_js'] = array( // component/add/entity_type/entity_id/field_name/ajax
-    'title' => 'Add component', // @TODO: title callback
+    'title' => 'Add component',
     'page callback' => 'component_add',
     'page arguments' => array(2, 3, 4, 5),
     'access arguments' => array('administer components'),
     'type' => MENU_CALLBACK,
+    //'file' => $module_path . '/components.forms.inc',
   );
   
   // @TODO: access arguments 'edit any $type component'
@@ -70,6 +57,7 @@ function components_menu() {
     'access arguments' => array('administer components'),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    //'file' => $module_path . '/components.forms.inc',
   );
   
   // @TODO: access arguments 'delete any $type component'
@@ -80,6 +68,7 @@ function components_menu() {
     'access arguments' => array('administer components'),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
+    //'file' => $module_path . '/components.forms.inc',
   );
 
   return $items;
@@ -395,9 +384,8 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
   
   foreach ($component_types as $type => $label) {
     $form_info['forms'][$type] = array(
-      //'form id' => $type . '_component_ajax_form',
-      'form id' => 'component_ajax_form',
-      //'include' => drupal_get_path('module', 'components') . '/components.forms.inc',
+      'form id' => 'component_form',
+      //'include' => $module_path . '/components.forms.inc',
     );
   }
   
