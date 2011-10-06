@@ -123,6 +123,21 @@ function component_ajax_form($form, &$form_state) {
       //'#access' => user_access('delete any $type component'),
     );
   }*/
+ 
+  $form['host_entity_type'] = array(
+    '#type' => 'hidden',
+    '#value' => $form_state['host_entity_type'],
+  );
+  
+  $form['host_entity_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $form_state['host_entity_id'],
+  );
+  
+  $form['host_entity_field_name'] = array(
+    '#type' => 'hidden',
+    '#value' => $form_state['host_entity_field_name'],
+  );
   
   field_attach_form('component', $component, $form, $form_state);
   
@@ -142,14 +157,14 @@ function component_ajax_form_validate($form, &$form_state) {
 }
 
 function component_ajax_form_submit($form, &$form_state) {
-  $component = $form_state['component'];dd($component);
+  $component = $form_state['component'];
   
   // Notify field widgets
   field_attach_submit('component', $component, $form, $form_state);
   
   // Save the component
   component_save($component);
-  
+  dd($component);
   drupal_set_message(t('The changes have been saved.'));
   //$form_state['rebuild'] = TRUE;
 }

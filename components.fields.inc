@@ -378,6 +378,7 @@ function components_form_alter(&$form, &$form_state, $form_id) {
       $field[$language]['add_more']['#id'] = 'component-add';
       $field[$language]['add_more']['#value'] = t('Add component');
       $field[$language]['add_more']['#attributes']['class'][] = 'ctools-use-modal';
+      //$field[$language]['add_more']['#attributes']['class'][] = 'ctools-modal-components-style';
       
       // Do not show an extra empty field
       $max_delta = $field[$language]['#max_delta'];
@@ -391,30 +392,34 @@ function components_form_alter(&$form, &$form_state, $form_id) {
   // Include the CTools tools that we need.
   ctools_include('ajax');
   ctools_include('modal');
+  
   // Add CTools' javascript to the page.
   ctools_modal_add_js();
   
-  /*$form['#attached']['library'][] = array('system', 'ui.dialog');
-  $form['#attached']['library'][] = array('system', 'drupal.ajax');
-  $form['#attached']['library'][] = array('system', 'jquery.form');
-  
-  $form['#attached']['css'] = components_get_admin_css();
-  
-  $form['#attached']['js'][] = drupal_get_path('module', 'components') . '/js/components-popup.js';
-  $form['#attached']['js'][] = array(
-    'data' => array('components' => array('popup' => array(
-      'id' => '#components-popup-body',
-      'title' => '#components-popup-title',
-      'popup' => '#components-popup',
-    ))),
-    'type' => 'setting',
+  // Create our own javascript that will be used to theme a modal.
+  /*$modal_style = array(
+    'components-style' => array(
+      'modalSize' => array(
+        'type' => 'fixed',
+        'width' => 500,
+        'height' => 300,
+        'addWidth' => 20,
+        'addHeight' => 15,
+      ),
+      'modalOptions' => array(
+        'opacity' => .7,
+        'background-color' => '#000',
+      ),
+      'animation' => 'fadeIn',
+      'modalTheme' => 'ComponentsModal',
+      'throbber' => theme('image', array('path' => ctools_image_path('ajax-loader.gif', 'ctools_ajax_sample'), 'alt' => t('Loading...'), 'title' => t('Loading'))),
+    ),
   );
+
+  drupal_add_js($modal_style, 'setting');
   
-  $form['components-popup'] = array(
-    //'#theme_wrappers' => array('components_popup'),
-    '#theme' => 'components_popup',
-    '#weight' => 9999,
-  );*/
+  ctools_add_js('components', 'components');
+  ctools_add_css('components', 'components');*/
 }
 
 /**

@@ -336,8 +336,8 @@ function component_add_orig($type, $entity_type, $entity_id, $field_name) {
 
 function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step = NULL) {
   if ($js) {
-    ctools_include('modal');
     ctools_include('ajax');
+    ctools_include('modal');
   }
   
   $form_info = array(
@@ -395,7 +395,8 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
   
   foreach ($component_types as $type => $label) {
     $form_info['forms'][$type] = array(
-      'form id' => $type . '_component_ajax_form',
+      //'form id' => $type . '_component_ajax_form',
+      'form id' => 'component_ajax_form',
       //'include' => drupal_get_path('module', 'components') . '/components.forms.inc',
     );
   }
@@ -407,7 +408,7 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
     'component' => &$component,
     'host_entity_type' => $entity_type,
     'host_entity_id' => $entity_id,
-    'host_field_name' => $field_name,
+    'host_entity_field_name' => $field_name,
   );
   
   // Send this all off to our form. This is like drupal_get_form only wizardy.
