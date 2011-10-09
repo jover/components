@@ -1,0 +1,58 @@
+#modalContent {
+  padding: .2em;
+  padding-right: 26px;
+  position: relative;
+}
+
+#modalContent .modal-header {
+  overflow: hidden;
+  padding: 0 20px;
+  white-space: nowrap;
+}
+
+#modalContent #modal-title {
+  color: #FFF;
+  display: block;
+  font-size: 20px;
+  font-weight: normal;
+  padding: .3em 0;
+}
+
+#modalContent .modal-close-wrapper {
+  margin-right: 26px;
+  position: absolute;
+  right: 0;
+}
+
+#modalContent .modal-close-wrapper .close,
+#modalContent .modal-close-wrapper .close:hover {
+  background: transparent url('../images/close.png') no-repeat;
+  -moz-border-radius-topleft: 0;
+  -webkit-border-top-left-radius: 0;
+  border-top-left-radius: 0;
+  display: block;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  /* Replace with position:fixed to get a scrolling close button. */
+  position: absolute;
+  width: 26px;
+}
+
+#modalContent .wizard-trail {
+  color: #666;
+  font-size: 100%;
+  margin-bottom: 1em;
+}
+
+#modalContent .wizard-trail .wizard-trail-current {
+  color: #000;
+}
+
+#modalContent div.ctools-modal-content {
+  background: #FFF;
+  border: none;
+  color: #000;
+  margin: 0;
+  padding: .5em 1em;
+}

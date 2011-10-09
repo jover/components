@@ -20,7 +20,8 @@ function components_field_info() {
     'component_reference' => array(
       'label' => t('Component reference'),
       'description' => t('This field stores the ID of a related component.'),
-      'settings' => array( // instance_settings
+      'settings' => array(),
+      'instance_settings' => array(
         'referenceable_types' => array(),
       ),
       'default_widget' => 'component_builder',
@@ -32,11 +33,10 @@ function components_field_info() {
 }
 
 /**
- * Implements hook_field_settings_form().
+ * Implements hook_field_instance_settings_form().
  */
-function components_field_settings_form($field, $instance, $has_data) {
-  //$settings = $instance['settings'];
-  $settings = $field['settings'];
+function components_field_instance_settings_form($field, $instance) {
+  $settings = $instance['settings'];
   
   $form = array();
   $form['referenceable_types'] = array(
@@ -82,11 +82,9 @@ function components_field_formatter_info() {
   return array(
     'component_reference_component' => array(
       'label' => t('Rendered component'),
-      'description' => t('Display the referenced component in a specific view mode'),
+      'description' => t('Display the referenced component'),
       'field types' => array('component_reference'),
-      'settings' => array(
-        'component_reference_view_mode' => 'default',
-      ),
+      'settings' => array(),
     ),
   );
 }
@@ -94,11 +92,9 @@ function components_field_formatter_info() {
 /**
  * Implements hook_field_formatter_settings_form().
  */
-function components_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
+function DEPRECATED_components_field_formatter_settings_form($field, $instance, $view_mode, $form, $form_state) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
-  //$settings = $display['instance_settings'];
-  //$settings = $instance['settings'];
   
   // Only build this information for component_reference_component displays
   if ($display['type'] !== 'component_reference_component') {
@@ -127,11 +123,9 @@ function components_field_formatter_settings_form($field, $instance, $view_mode,
 /**
  * Implements hook_field_formatter_settings_summary().
  */
-function components_field_formatter_settings_summary($field, $instance, $view_mode) {
+function DEPRECATED_components_field_formatter_settings_summary($field, $instance, $view_mode) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
-  //$settings = $display['instance_settings'];
-  //$settings = $instance['settings'];
   
   if ($display['type'] === 'component_reference_component') {
     $entity_info = entity_get_info('component');
@@ -183,20 +177,19 @@ function components_field_formatter_prepare_view($entity_type, $entities, $field
  */
 function components_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $result = array();
-  $settings = $display['settings'];
-  //$settings = $display['instance_settings'];
-  //$settings = $instance['settings'];
   
   switch ($display['type']) {
     case 'component_reference_component':
-      // @TODO: do we need $view_mode?
-      $view_mode = $settings['component_reference_view_mode'];
-      // @TODO: consider to create component_view_multiple() for performance reasons.
-      // @see node_reference_field_formatter_view()
-      // If we're going to use specific view_modes for each component, this won't be possible...
       foreach ($items as $delta => $item) {
         if ($item['access'] && isset($item['component'])) {
-          $result[$delta] = component_view($item['component']);
+          // If view mode is set, render the component in this view mode.
+          if (isset($item['view_mode']) && !is_null($item['view_mode'])) {
+            $result[$delta] = component_view($item['component'], $item['view_mode']);
+          }
+          // If view mode is not set, render the component in default view mode.
+          else {
+            $result[$delta] = component_view($item['component']);
+          }
         }
         else {
           $result[$delta]['#markup'] = t('The component with cid=@cid cannot be found.', array('@cid' => $item['cid']));
@@ -240,15 +233,28 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
         '#type' => 'textfield',
         '#title' => t('Component ID'),
         '#default_value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
+      );
+          
+      $element['view_mode'] = array(
+        '#type' => 'hidden',
+        '#value' => isset($items[$delta]['view_mode']) ? $items[$delta]['view_mode'] : NULL,
       ) + $base; // @TODO: $base?
       break;
     case 'component_builder':
       if (isset($items[$delta]['cid'])) {
         if ($component = component_load($items[$delta]['cid'])) {
-          $element['component-' . $component->cid] = array(
-            '#type' => 'markup',
-            '#markup' => drupal_render(component_view($component)),
-          );
+          if (isset($items[$delta]['view_mode']) && !is_null($items[$delta]['view_mode'])) {
+            $element['component-' . $component->cid] = array(
+              '#type' => 'markup',
+              '#markup' => drupal_render(component_view($component, $items[$delta]['view_mode'])),
+            );
+          }
+          else {
+            $element['component-' . $component->cid] = array(
+              '#type' => 'markup',
+              '#markup' => drupal_render(component_view($component)),
+            );
+          }
           
           /*$component_links = array(
             'items' => array(),
@@ -271,6 +277,11 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
           $element['cid'] = array(
             '#type' => 'hidden',
             '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
+          );
+          
+          $element['view_mode'] = array(
+            '#type' => 'hidden',
+            '#value' => isset($items[$delta]['view_mode']) ? $items[$delta]['view_mode'] : NULL,
           ) + $base; // @TODO: $base?
         }
         else {
@@ -290,13 +301,22 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
  * Implements hook_form_alter().
  */
 function components_form_alter(&$form, &$form_state, $form_id) {
+  if (!isset($form['#entity_type']) || !isset($form_state[$form['#entity_type']])) {
+    return;
+  }
+  
+  $entity_type = $form['#entity_type'];
+  $entity = $form_state[$entity_type];
+  
+  list($entity_id) = entity_extract_ids($entity_type, $entity);
+  
   $field_instances = components_get_field_instances();
   
   $field_occurrences = array();
   foreach ($field_instances as $field_instance => $entity_types) {
-    foreach ($entity_types as $entity_type => $bundle) {
-      if (isset($form['#entity_type']) && isset($form['#bundle'])) {
-        if ($form['#entity_type'] == $entity_type && $form['#bundle'] == $bundle) {
+    foreach ($entity_types as $type => $bundle) {
+      if (isset($entity_type) && isset($form['#bundle'])) {
+        if ($entity_type == $type && $form['#bundle'] == $bundle) {
           $field_occurrences[] = $field_instance;
         }
       }
@@ -308,38 +328,44 @@ function components_form_alter(&$form, &$form_state, $form_id) {
     return;
   }
   
-  $entity_type = $form['#entity_type'];
-  $entity = $form_state[$entity_type];
-  
   foreach ($field_occurrences as $field_instance) {
     if (isset($form[$field_instance])) {
       $field = &$form[$field_instance];
       $language = $field['#language'];
       
-      unset($field[$language]['add_more']);
-      
-      $field[$language]['add_more']['url'] = array(
-        '#type' => 'hidden',
-        // The name of the class is the #id of $field[$language]['add_more']['button] with "-url" suffix.
-        '#attributes' => array('class' => array('component-add-url')),
-        '#value' => url('component/add/' . $entity_type . '/1/' . $field[$language]['#field_name'] . '/nojs'),
-      );
-      
-      $field[$language]['add_more']['button'] = array(
-        '#type' => 'button',
-        '#value' => t('Add component'),
-        '#id' => 'component-add',
-        '#attributes' => array('class' => array(
-          'ctools-use-modal',
-          'ctools-modal-components-style',
-        )),
-      );
-      
-      // Do not show an extra empty field
-      $max_delta = $field[$language]['#max_delta'];
-      if ($max_delta > 0) {
-        unset($field[$language][$max_delta]);
-        $field[$language]['#max_delta'] = $max_delta - 1;
+      if (is_null($entity_id)) {
+        // Components cannot be added to the host entity if the host entity is new (empty entity id).
+        $field = array(
+          '#type' => 'markup',
+          '#markup' => t('Components can be added only after the host entity is saved.'),
+        );
+      }
+      else {
+        unset($field[$language]['add_more']);
+        
+        $field[$language]['add_more']['url'] = array(
+          '#type' => 'hidden',
+          // The name of the class is the #id of $field[$language]['add_more']['button] with "-url" suffix.
+          '#attributes' => array('class' => array('component-add-url')),
+          '#value' => url('component/add/' . $entity_type . '/' . $entity_id . '/' . $field[$language]['#field_name'] . '/nojs'),
+        );
+        
+        $field[$language]['add_more']['button'] = array(
+          '#type' => 'button',
+          '#value' => t('Add component'),
+          '#id' => 'component-add',
+          '#attributes' => array('class' => array(
+            'ctools-use-modal',
+            'ctools-modal-components-style',
+          )),
+        );
+        
+        // Do not show an extra empty field
+        $max_delta = $field[$language]['#max_delta'];
+        if ($max_delta > 0) {
+          unset($field[$language][$max_delta]);
+          $field[$language]['#max_delta'] = $max_delta - 1;
+        }
       }
     }
   }
@@ -352,17 +378,19 @@ function components_form_alter(&$form, &$form_state, $form_id) {
   ctools_modal_add_js();
   
   // Create our own javascript that will be used to theme a modal.
-  /*$modal_style = array(
+  $modal_style = array(
     'components-style' => array(
       'modalSize' => array(
-        'type' => 'fixed',
-        'width' => 500,
-        'height' => 300,
-        'addWidth' => 20,
-        'addHeight' => 15,
+        'type' => 'scale',
+        'width' => .8,
+        'height' => .8,
+        'addWidth' => 0,
+        'addHeight' => 0,
+        'contentRight' => 25,
+        'contentBottom' => 45,
       ),
       'modalOptions' => array(
-        'opacity' => .7,
+        'opacity' => .8,
         'background-color' => '#000',
       ),
       'animation' => 'fadeIn',
@@ -374,7 +402,7 @@ function components_form_alter(&$form, &$form_state, $form_id) {
   drupal_add_js($modal_style, 'setting');
   
   ctools_add_js('components', 'components');
-  ctools_add_css('components', 'components');*/
+  ctools_add_css('components', 'components');
 }
 
 /**

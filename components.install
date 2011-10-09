@@ -94,6 +94,11 @@ function components_field_schema($field) {
         'unsigned' => TRUE,
         'not null' => FALSE,
       ),
+      'view_mode' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
     ),
     'indexes' => array('cid' => array('cid')),
     'foreign keys' => array(

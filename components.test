@@ -111,7 +111,8 @@ class ComponentsTestCase extends DrupalWebTestCase {
         'cardinality' => FIELD_CARDINALITY_UNLIMITED,
         'translatable' => TRUE,
         'locked' => FALSE,
-        'settings' => array(
+        'settings' => array(),
+        'instance_settings' => array(
           'referenceable_types' => array(),
         ),
       ));

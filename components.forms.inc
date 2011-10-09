@@ -29,6 +29,11 @@ function component_form($form, &$form_state) {
     '#value' => $component->type,
   );
   
+  $form['view_mode'] = array(
+    '#type' => 'hidden',
+    '#value' => $component->view_mode,
+  );
+  
   /*
   
   // @TODO: access arguments 'delete any $type component'

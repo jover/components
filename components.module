@@ -86,12 +86,7 @@ function components_entity_info() {
     'controller class' => 'EntityAPIController',
     'base table' => 'component',
     'fieldable' => TRUE,
-    'view modes' => array(
-      'rss' => array(
-        'label' => t('RSS'),
-        'custom settings' => FALSE,
-      ),
-    ),
+    'view modes' => array(),
     'entity keys' => array(
       'id' => 'cid',
       'bundle' => 'type',
@@ -341,13 +336,17 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
     'cancel callback' => 'component_add_wizard_cancel',
     // this controls order, as well as form labels
     'order' => array(
-      'start' => t('Choose component type'),
+      'type' => t('Choose component type'),
+      'view_mode' => t('Choose view mode'),
     ),
     // here we map a step to a form id.
     'forms' => array(
       // e.g. this for the step at wombat/create
-      'start' => array(
-        'form id' => 'component_add_start',
+      'type' => array(
+        'form id' => 'component_add_component_type',
+      ),
+      'view_mode' => array(
+        'form id' => 'component_add_component_view_mode',
       ),
     ),
   );
@@ -358,7 +357,7 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
     // We reset the form when $step is NULL because that means they have
     // for whatever reason started over.
     component_add_cache_clear($component_id);
-    $step = 'start';
+    $step = 'type';
   }
   
   // This automatically gets defaults if there wasn't anything saved.
@@ -384,6 +383,8 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
   
   foreach ($component_types as $type => $label) {
     $form_info['forms'][$type] = array(
+      // $type . '_component_form' doesn't work because the corresponding
+      // submit function cannot be found by the CTools Wizard functions
       'form id' => 'component_form',
       //'include' => $module_path . '/components.forms.inc',
     );
@@ -454,6 +455,7 @@ function component_add_cache_get($id) {
     // Create a default component.
     $component = new stdClass();
     $component->type = 'unknown';
+    $component->view_mode = NULL;
   }
 
   return $component;
@@ -493,7 +495,7 @@ function component_add_wizard_cancel(&$form_state) {
   $form_state['cancel'] = TRUE;
 }
 
-function component_add_start($form, &$form_state) {
+function component_add_component_type($form, &$form_state) {
   $form_state['title'] = t('Choose component type');
   $options = array();
   
@@ -512,10 +514,37 @@ function component_add_start($form, &$form_state) {
   return $form;
 }
 
-function component_add_start_submit(&$form, &$form_state) {
+function component_add_component_type_submit(&$form, &$form_state) {
   $form_state['component']->type = $form_state['values']['type'];
   // Override where to go next based on the component type selected.
-  $form_state['clicked_button']['#next'] = $form_state['values']['type'];
+  $form_state['clicked_button']['#next'] = 'view_mode';
+}
+
+function component_add_component_view_mode($form, &$form_state) {
+  $form_state['title'] = t('Choose view mode');
+  $component_type = $form_state['component']->type;
+  $options = array();
+  
+  $entity_info = entity_get_info('component');
+  foreach ($entity_info['view modes'] as $view_mode => $properties) {
+    $options[$view_mode] = $properties['label'];
+  }
+  
+  $form['view_mode'] = array(
+    '#title' => t('Choose view mode'),
+    '#type' => 'radios',
+    '#options' => $options,
+    '#default_value' => $form_state['component']->view_mode,
+    '#required' => TRUE,
+  );
+  
+  return $form;
+}
+
+function component_add_component_view_mode_submit(&$form, &$form_state) {
+  $form_state['component']->view_mode = $form_state['values']['view_mode'];
+  // Override where to go next based on the component view mode selected.
+  $form_state['clicked_button']['#next'] = $form_state['component']->type;
 }
 
 function component_edit($component) {
@@ -529,7 +558,7 @@ function component_edit($component) {
  * @param $component
  *   A component object.
  * @param $view_mode
- *   View mode, e.g. 'default', 'rss', ...
+ *   View mode, e.g. 'default', ...
  * @param $langcode
  *   (optional) A language code to use for rendering. Defaults to the global
  *   content language of the current request.
@@ -776,6 +805,7 @@ class Component extends Entity {
   public $type;
   public $status;
   
+  public $view_mode;
   public $host_entity_type;
   public $host_entity_id;
   public $host_entity_field_name;
@@ -822,7 +852,10 @@ class Component extends Entity {
         
         entity_get_controller($this->entityType)->save($this, $transaction);
         
-        $host->{$this->host_entity_field_name}[$host->language][] = array('cid' => $this->identifier());
+        $host->{$this->host_entity_field_name}[$host->language][] = array(
+          'cid' => $this->identifier(),
+          'view_mode' => isset($this->view_mode) ? $this->view_mode : NULL,
+        );
         
         entity_save($this->host_entity_type, $host);
         
