@@ -243,6 +243,9 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
     case 'component_builder':
       if (isset($items[$delta]['cid'])) {
         if ($component = component_load($items[$delta]['cid'])) {
+          ctools_include('ajax');
+          ctools_include('modal');
+          
           if (isset($items[$delta]['view_mode']) && !is_null($items[$delta]['view_mode'])) {
             $element['component-' . $component->cid] = array(
               '#type' => 'markup',
@@ -256,23 +259,20 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
             );
           }
           
-          /*$component_links = array(
+          $component_links = array(
             'items' => array(),
             'title' => NULL,
             'type' => 'ul',
             'attributes' => array('class' => 'action-links')
           );
           
-          $component_links['items'][] = l(
-            t('Delete'),
-            'component/' . $component->cid . '/delete',
-            array('query' => drupal_get_destination())
-          );
+          $component_links['items'][] = ctools_modal_text_button(t('Edit'), 'component/' . $component->cid . '/edit/nojs', t('Edit'), 'ctools-modal-components-style');
+          $component_links['items'][] = ctools_modal_text_button(t('Delete'), 'component/' . $component->cid . '/delete/nojs', t('Delete'), 'ctools-modal-components-style');
           
-          $element['component-' . $component->cid . '-delete'] = array(
+          $element['component-' . $component->cid . '-action-links'] = array(
             '#type' => 'markup',
             '#markup' => theme_item_list($component_links),
-          );*/
+          );
           
           $element['cid'] = array(
             '#type' => 'hidden',

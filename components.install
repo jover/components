@@ -25,6 +25,13 @@ function components_schema() {
         'not null' => TRUE,
         'default' => '',
       ),
+      'view_mode' => array(
+        'description' => 'The default view mode of this component.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+      ),
       'status' => array(
         'description' => 'Boolean indicating whether the component is published (visible to non-administrators).',
         'type' => 'int',

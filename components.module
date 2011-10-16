@@ -50,7 +50,7 @@ function components_menu() {
   );
   
   // @TODO: access arguments 'edit any $type component'
-  $items['component/%component/edit'] = array(
+  /*$items['component/%component/edit'] = array(
     'title' => 'Edit',
     'page callback' => 'component_edit',
     'page arguments' => array(1),
@@ -58,16 +58,23 @@ function components_menu() {
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
     //'file' => $module_path . '/components.forms.inc',
+  );*/
+  $items['component/%component/edit/%ctools_js'] = array(
+    'title' => 'Edit',
+    'page callback' => 'component_edit_form',
+    'page arguments' => array(1, 3),
+    'access arguments' => array('administer components'),
+    'type' => MENU_CALLBACK,
+    //'file' => $module_path . '/components.forms.inc',
   );
   
   // @TODO: access arguments 'delete any $type component'
-  $items['component/%component/delete'] = array(
+  $items['component/%component/delete/%ctools_js'] = array( // component/component_id/delete/ajax
     'title' => 'Delete',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('component_form_delete_confirm', 1),
+    'page callback' => 'component_remove',
+    'page arguments' => array(1, 3),
     'access arguments' => array('administer components'),
-    'type' => MENU_LOCAL_TASK,
-    'context' => MENU_CONTEXT_INLINE,
+    'type' => MENU_CALLBACK,
     //'file' => $module_path . '/components.forms.inc',
   );
 
@@ -425,11 +432,81 @@ function component_add($entity_type, $entity_id, $field_name, $js = NULL, $step 
   }
   else {
     if ($output === FALSE || !empty($form_state['complete'])) {
-      return $animal;
+      return $component;
     }
     else if (!empty($form_state['cancel'])) {
       // @TODO: change node to appropriate entity type
       drupal_goto('node/' . $entity_id);
+    }
+    else {
+      return $output;
+    }
+  }
+}
+
+function component_edit_form($component, $js = NULL) {
+  if ($js) {
+    ctools_include('ajax');
+    ctools_include('modal');
+  }
+  
+  $form_info = array(
+    'id' => 'component-edit',
+    'path' => 'component/' . $component->cid . '/edit/' . ($js ? 'ajax' : 'nojs'),
+    'show cancel' => TRUE,
+    'finish callback' => 'component_add_wizard_finish',
+    'cancel callback' => 'component_add_wizard_cancel',
+    // this controls order, as well as form labels
+    'order' => array(
+      'edit' => t('Edit %type component', array('%type' => component_type_get_label_by_type($component->type))),
+    ),
+    // here we map a step to a form id.
+    'forms' => array(
+      // e.g. this for the step at wombat/create
+      'edit' => array(
+        'form id' => 'component_form',
+      ),
+    ),
+  );
+  
+  $form_state = array(
+    'ajax' => $js,
+    // Put our component into the form state cache so we can easily find it.
+    'component' => &$component,
+  );
+  
+  $step = 'edit';
+  
+  // Send this all off to our form. This is like drupal_get_form only wizardy.
+  ctools_include('wizard');
+  $form = ctools_wizard_multistep_form($form_info, $step, $form_state);
+  $output = drupal_render($form);
+  
+  // If $output is FALSE, there was no actual form.
+  if ($js) {
+    // If javascript is active, we have to use a render array.
+    $commands = array();
+    if ($output === FALSE || !empty($form_state['complete'])) {
+      // Dismiss the modal.
+      $commands[] = ctools_modal_command_dismiss();
+    }
+    else if (!empty($form_state['cancel'])) {
+      // If cancelling, return to the activity.
+      $commands[] = ctools_modal_command_dismiss();
+    }
+    else {
+      $commands = ctools_modal_form_render($form_state, $output);
+    }
+    print ajax_render($commands);
+    exit;
+  }
+  else {
+    if ($output === FALSE || !empty($form_state['complete'])) {
+      return $component;
+    }
+    else if (!empty($form_state['cancel'])) {
+      // @TODO: change node to appropriate entity type
+      // drupal_goto('node/' . $entity_id);
     }
     else {
       return $output;
@@ -545,6 +622,107 @@ function component_add_component_view_mode_submit(&$form, &$form_state) {
   $form_state['component']->view_mode = $form_state['values']['view_mode'];
   // Override where to go next based on the component view mode selected.
   $form_state['clicked_button']['#next'] = $form_state['component']->type;
+}
+
+function component_remove($component, $js = NULL) {
+  if ($js) {
+    ctools_include('ajax');
+    ctools_include('modal');
+  }
+  
+  $form_info = array(
+    'id' => 'component-delete',
+    'path' => 'component/' . $component->cid . '/delete/' . ($js ? 'ajax' : 'nojs'),
+    'show cancel' => TRUE,
+    'finish callback' => 'component_remove_wizard_finish',
+    'cancel callback' => 'component_remove_wizard_cancel',
+    // this controls order, as well as form labels
+    'order' => array(
+      'type' => t('Delete component'),
+    ),
+    // here we map a step to a form id.
+    'forms' => array(
+      // e.g. this for the step at wombat/create
+      'delete' => array(
+        'form id' => 'component_remove_component',
+      ),
+    ),
+  );
+  
+  $form_state = array(
+    'ajax' => $js,
+    // Put our component into the form state cache so we can easily find it.
+    'component' => &$component,
+  );
+  
+  $step = 'delete';
+  
+  // Send this all off to our form. This is like drupal_get_form only wizardy.
+  ctools_include('wizard');
+  $form = ctools_wizard_multistep_form($form_info, $step, $form_state);
+  $output = drupal_render($form);
+  
+  // If $output is FALSE, there was no actual form.
+  if ($js) {
+    // If javascript is active, we have to use a render array.
+    $commands = array();
+    if ($output === FALSE || !empty($form_state['complete'])) {
+      // Dismiss the modal.
+      $commands[] = ctools_modal_command_dismiss();
+    }
+    else if (!empty($form_state['cancel'])) {
+      // If cancelling, return to the activity.
+      $commands[] = ctools_modal_command_dismiss();
+    }
+    else {
+      $commands = ctools_modal_form_render($form_state, $output);
+    }
+    print ajax_render($commands);
+    exit;
+  }
+  else {
+    if ($output === FALSE || !empty($form_state['complete'])) {
+      return $component;
+    }
+    else if (!empty($form_state['cancel'])) {
+      // @TODO: change node to appropriate entity type
+      drupal_goto(drupal_get_destination());
+    }
+    else {
+      return $output;
+    }
+  }
+}
+
+/**
+ * Handle the 'finish' click on teh add/edit pane form wizard.
+ *
+ * All we need to do is set a flag so the return can handle adding
+ * the pane.
+ */
+function component_remove_wizard_finish(&$form_state) {
+  $form_state['complete'] = TRUE;
+}
+
+/**
+ * Handle the 'cancel' click on the add/edit pane form wizard.
+ */
+function component_remove_wizard_cancel(&$form_state) {
+  $form_state['cancel'] = TRUE;
+}
+
+function component_remove_component($form, &$form_state) {
+  $form['confirmation'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Are you sure you want to delete this %type component?', array('%type' => component_type_get_label_by_type($component->type))),
+  );
+  
+  return $form;
+}
+
+function component_remove_component_submit(&$form, &$form_state) {
+  $component = $form_state['component'];
+  component_delete($component->cid);
 }
 
 function component_edit($component) {
@@ -804,8 +982,8 @@ class Component extends Entity {
   /*public $cid;*/
   public $type;
   public $status;
-  
   public $view_mode;
+  
   public $host_entity_type;
   public $host_entity_id;
   public $host_entity_field_name;

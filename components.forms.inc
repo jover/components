@@ -22,8 +22,33 @@ function components_forms() {
 function component_form($form, &$form_state) {
   $component = $form_state['component'];
   
-  $form_state['title'] = t('Create new @type component', array('@type' => $component->type));
-  
+  if (!empty($component->cid)) {
+    $form_state['title'] = t('Edit @type component', array('@type' => component_type_get_label_by_type($component->type)));
+    
+    $form['cid'] = array( // component_save() needs this to determine it's an existing component
+      '#type' => 'hidden',
+      '#value' => $component->cid,
+    );
+  }
+  else {
+    $form_state['title'] = t('Create new @type component', array('@type' => component_type_get_label_by_type($component->type)));
+   
+    $form['host_entity_type'] = array(
+      '#type' => 'hidden',
+      '#value' => $form_state['host_entity_type'],
+    );
+    
+    $form['host_entity_id'] = array(
+      '#type' => 'hidden',
+      '#value' => $form_state['host_entity_id'],
+    );
+    
+    $form['host_entity_field_name'] = array(
+      '#type' => 'hidden',
+      '#value' => $form_state['host_entity_field_name'],
+    );
+  }
+    
   $form['type'] = array(
     '#type' => 'hidden',
     '#value' => $component->type,
@@ -32,38 +57,6 @@ function component_form($form, &$form_state) {
   $form['view_mode'] = array(
     '#type' => 'hidden',
     '#value' => $component->view_mode,
-  );
-  
-  /*
-  
-  // @TODO: access arguments 'delete any $type component'
-  if (!empty($component->cid)) {
-    $form['cid'] = array( // component_save() needs this to determine it's an existing component
-      '#type' => 'hidden',
-      '#value' => $component->cid,
-    );
-    
-    $form['actions']['delete'] = array(
-      '#type' => 'submit',
-      '#value' => t('Delete'),
-      '#submit' => array('component_form_delete_submit'),
-      //'#access' => user_access('delete any $type component'),
-    );
-  }*/
- 
-  $form['host_entity_type'] = array(
-    '#type' => 'hidden',
-    '#value' => $form_state['host_entity_type'],
-  );
-  
-  $form['host_entity_id'] = array(
-    '#type' => 'hidden',
-    '#value' => $form_state['host_entity_id'],
-  );
-  
-  $form['host_entity_field_name'] = array(
-    '#type' => 'hidden',
-    '#value' => $form_state['host_entity_field_name'],
   );
   
   field_attach_form('component', $component, $form, $form_state);
@@ -83,7 +76,12 @@ function component_form_submit($form, &$form_state) {
   $component = $form_state['component'];
   
   // Notify field widgets
-  field_attach_submit('component', $component, $form, $form_state);
+  if (empty($component->cid)) {
+    field_attach_submit('component', $component, $form, $form_state);
+  }
+  else {
+    field_attach_update('component', $component);
+  }
   
   // Save the component
   component_save($component);
