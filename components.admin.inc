@@ -37,7 +37,6 @@ class ComponentTypeUIController extends EntityDefaultUIController {
       // @TODO: wait for drupal_array_insert() : http://drupal.org/node/66183
       if ($delta == 1) {
         $header_items[] = t('Description');
-        $header_items[] = t('Sample Image');
       }
       $header_items[] = $header;
     }
@@ -55,21 +54,6 @@ class ComponentTypeUIController extends EntityDefaultUIController {
   protected function overviewTableRow($conditions, $id, $entity, $additional_cols = array()) {
     // Add description column
     $additional_cols[] = (isset($entity->description)) ? $entity->description : t('No description');
-    
-    // Add sample image column
-    if (isset($entity->field_component_type_image) && $image = field_get_items('component_type', $entity, 'field_component_type_image')) {
-      $image = reset($image);
-      $image_vars = array(
-        'style_name' => 'thumbnail', // @TODO: create custom image styles for sample images (component_type_sample_image & component_type_sample_image_thumbnail)
-        'path' => $image['uri'],
-        'alt' => t('@label sample image', array('@label' => $entity->label)),
-        'title' => t('@title sample image', array('@title' => $entity->label)),
-      );
-      $additional_cols[] = theme_image_style($image_vars);
-    }
-    else {
-      $additional_cols[] = t('No sample image');
-    }
     
     return parent::overviewTableRow($conditions, $id, $entity, $additional_cols);
   }

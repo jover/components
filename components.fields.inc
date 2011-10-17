@@ -474,7 +474,6 @@ function components_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
  */
 function components_get_field_instances() {
   $instances = field_info_instances();
-  $field_types = field_info_field_types();
   
   $fields = array();
   

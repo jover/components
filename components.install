@@ -141,107 +141,32 @@ function components_field_schema($field) {
  * Implements hook_install().
  */
 function components_install() {
-  // Create all the fields
-  foreach (_components_type_installed_fields() as $field) {
-    field_create_field($field);
-  }
   
-  // Create all the field instances
-  foreach (_components_type_installed_instances() as $instance) {
-    field_create_instance($instance);
-  }
 }
 
 /**
  * Implements hook_uninstall().
- * 
- * @TODO: uninstall fields does not seem to work...
  */
 function components_uninstall() {
-  // Delete all field instances defined by this module, their data and the field itself
-  foreach (array_keys(_components_type_installed_fields()) as $field_name) {
-    field_delete_field($field_name);
+  // Delete all field instances of all component types
+  foreach (field_info_instances('component') as $bundle => $bundle_instances) {
+    foreach ($bundle_instances as $field_name => $instance) {
+      field_delete_instance($instance);
+    }
   }
   
-  // Delete all field instances attached to the entity types defined by this module
-  // -> should be handled by field_delete_field()
-  //foreach (array_keys(_components_type_installed_instances()) as $instance) {
-  //  field_delete_instance($instance);
-  //}
+  // Delete all field instances of type "component_reference", their data and the field itself
+  foreach (field_info_instances() as $entity_type => $type_bundles) {
+    foreach ($type_bundles as $bundle => $bundle_instances) {
+      foreach ($bundle_instances as $field_name => $instance) {
+        $field = field_info_field($field_name);
+        if ($field['type'] == 'component_reference') {
+          field_delete_field($field_name);
+        }
+      }
+    }
+  }
   
   // Purge all field information
   field_purge_batch(1000);
-}
-
-/**
- * Return a structured array defining the fields created by this module
- */
-function _components_type_installed_fields() {
-  $fields = array();
-  
-  // Create an image field named "Sample Image", enabled for the 'component_type' entity.
-  $fields['field_component_type_image'] = array(
-    'field_name' => 'field_component_type_image',
-    'label' => t('Sample Image'),
-    'type' => 'image',
-    'entity_types' => array('component_type'),
-    'cardinality' => 1,
-    'translatable' => TRUE,
-    'locked' => TRUE,
-    'indexes' => array('fid' => array('fid')),
-    'settings' => array(
-      'uri_scheme' => 'public',
-      'default_image' => FALSE,
-    ),
-    'storage' => array(
-      'type' => 'field_sql_storage',
-      'settings' => array(),
-    ),
-  );
-  
-  return $fields;
-}
-
-/**
- * Return a structured array defining the field instances created by this module
- */
-function _components_type_installed_instances() {
-  $instances = array();
-  
-  // Create an instance of the image field "Sample Image"
-  $instances['field_component_type_image'] = array(
-    'field_name' => 'field_component_type_image',
-    'label' => t('Sample Image'),
-    'entity_type' => 'component_type',
-    'bundle' => 'component_type',
-    'description' => t('Upload a sample image for this component type.'),
-    'required' => FALSE,
-    'settings' => array(
-      'file_directory' => 'field/image',
-      'file_extensions' => 'png gif jpg jpeg',
-      'max_filesize' => '',
-      'max_resolution' => '',
-      'min_resolution' => '',
-      'alt_field' => TRUE,
-      'title_field' => '',
-    ),
-    'widget' => array(
-      'type' => 'image_image',
-      'settings' => array(
-        'progress_indicator' => 'throbber',
-        'preview_image_style' => 'thumbnail',
-      ),
-      'weight' => -1,
-    ),
-    'display' => array(
-      'default' => array(
-        'label' => 'hidden',
-        'type' => 'image',
-        'settings' => array('image_style' => 'large', 'image_link' => ''),
-        'weight' => -1,
-      ),
-    ),
-  );
-  
-  return $instances;
 }
