@@ -32,21 +32,6 @@ function component_form($form, &$form_state) {
   }
   else {
     $form_state['title'] = t('Create new @type component', array('@type' => component_type_get_label_by_type($component->type)));
-   
-    $form['host_entity_type'] = array(
-      '#type' => 'hidden',
-      '#value' => $form_state['host_entity_type'],
-    );
-    
-    $form['host_entity_id'] = array(
-      '#type' => 'hidden',
-      '#value' => $form_state['host_entity_id'],
-    );
-    
-    $form['host_entity_field_name'] = array(
-      '#type' => 'hidden',
-      '#value' => $form_state['host_entity_field_name'],
-    );
   }
     
   $form['type'] = array(
@@ -58,7 +43,22 @@ function component_form($form, &$form_state) {
     '#type' => 'hidden',
     '#value' => $component->view_mode,
   );
+
+  $form['host_entity_type'] = array(
+    '#type' => 'hidden',
+    '#value' => $component->host_entity_type,
+  );
   
+  $form['host_entity_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $component->host_entity_id,
+  );
+  
+  $form['host_entity_field_name'] = array(
+    '#type' => 'hidden',
+    '#value' => $component->host_entity_field_name,
+  );
+
   field_attach_form('component', $component, $form, $form_state);
   
   return $form;
@@ -66,21 +66,20 @@ function component_form($form, &$form_state) {
 
 function component_form_validate($form, &$form_state) {
   $component = component_create($form_state['values']);
-  $form_state['component'] = $component;
   
   // Field validation
   field_attach_form_validate('component', $component, $form, $form_state);
+  
+  $form_state['component'] = $component;
 }
 
 function component_form_submit($form, &$form_state) {
   $component = $form_state['component'];
   
-  // Notify field widgets
+  entity_form_submit_build_entity('component', $component, $form, $form_state);
+  
   if (empty($component->cid)) {
-    field_attach_submit('component', $component, $form, $form_state);
-  }
-  else {
-    field_attach_update('component', $component);
+    $component->is_new = TRUE;
   }
   
   // Save the component

@@ -246,19 +246,25 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
           ctools_include('ajax');
           ctools_include('modal');
           
+          // Determine the view mode
+          $view_mode = NULL;
           if (isset($items[$delta]['view_mode']) && !is_null($items[$delta]['view_mode'])) {
-            $element['component-' . $component->cid] = array(
-              '#type' => 'markup',
-              '#markup' => drupal_render(component_view($component, $items[$delta]['view_mode'])),
-            );
+            $view_mode = $items[$delta]['view_mode'];
           }
-          else {
-            $element['component-' . $component->cid] = array(
-              '#type' => 'markup',
-              '#markup' => drupal_render(component_view($component)),
-            );
+          else if (isset($component->view_mode)) {
+            $view_mode = $component->view_mode;
           }
           
+          // Get render array for the component based on the view mode
+          $component_view = is_null($view_mode) ? component_view($component) : component_view($component, $view_mode);
+          
+          // Render the component
+          $element['component-' . $component->cid] = array(
+            '#type' => 'markup',
+            '#markup' => drupal_render($component_view),
+          );
+          
+          // Edit & Delete links
           $component_links = array(
             'items' => array(),
             'title' => NULL,
@@ -274,11 +280,13 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
             '#markup' => theme_item_list($component_links),
           );
           
+          // Component ID
           $element['cid'] = array(
             '#type' => 'hidden',
             '#value' => isset($items[$delta]['cid']) ? $items[$delta]['cid'] : NULL,
           );
           
+          // Component View Mode
           $element['view_mode'] = array(
             '#type' => 'hidden',
             '#value' => isset($items[$delta]['view_mode']) ? $items[$delta]['view_mode'] : NULL,

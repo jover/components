@@ -19,21 +19,41 @@ function components_schema() {
         'not null' => TRUE,
       ),
       'type' => array(
-        'description' => 'The {component_type}.type of this component.',
+        'description' => 'The {component_type}.type of a component.',
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
         'default' => '',
       ),
       'view_mode' => array(
-        'description' => 'The default view mode of this component.',
+        'description' => 'The default view mode of a component.',
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 255, // @TODO: check length
+        'not null' => FALSE,
+        'default' => '',
+      ),
+      'host_entity_type' => array(
+        'description' => 'The host entity type of a component.',
+        'type' => 'varchar',
+        'length' => 255, // @TODO: check length
+        'not null' => FALSE,
+        'default' => '',
+      ),
+      'host_entity_id' => array(
+        'description' => 'The ID of the host entity of a component.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'host_entity_field_name' => array(
+        'description' => 'The field name of the host entity which holds a component.',
+        'type' => 'varchar',
+        'length' => 255, // @TODO: check length
         'not null' => FALSE,
         'default' => '',
       ),
       'status' => array(
-        'description' => 'Boolean indicating whether the component is published (visible to non-administrators).',
+        'description' => 'Boolean indicating whether a component is published (visible to non-administrators).',
         'type' => 'int',
         'not null' => TRUE,
         'default' => 1,
@@ -135,7 +155,7 @@ function components_install() {
 /**
  * Implements hook_uninstall().
  * 
- * @TODO: remove all fields of the type "component_reference"
+ * @TODO: uninstall fields does not seem to work...
  */
 function components_uninstall() {
   // Delete all field instances defined by this module, their data and the field itself
@@ -144,9 +164,10 @@ function components_uninstall() {
   }
   
   // Delete all field instances attached to the entity types defined by this module
-  foreach (array_keys(_components_type_installed_instances()) as $instance) {
-    field_delete_instance($instance);
-  }
+  // -> should be handled by field_delete_field()
+  //foreach (array_keys(_components_type_installed_instances()) as $instance) {
+  //  field_delete_instance($instance);
+  //}
   
   // Purge all field information
   field_purge_batch(1000);
