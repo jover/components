@@ -251,7 +251,7 @@ function components_field_widget_form(&$form, &$form_state, $field, $instance, $
           if (isset($items[$delta]['view_mode']) && !is_null($items[$delta]['view_mode'])) {
             $view_mode = $items[$delta]['view_mode'];
           }
-          else if (isset($component->view_mode)) {
+          elseif (isset($component->view_mode)) {
             $view_mode = $component->view_mode;
           }
           

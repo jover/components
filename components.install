@@ -28,14 +28,14 @@ function components_schema() {
       'view_mode' => array(
         'description' => 'The default view mode of a component.',
         'type' => 'varchar',
-        'length' => 255, // @TODO: check length
+        'length' => 32,
         'not null' => FALSE,
         'default' => '',
       ),
       'host_entity_type' => array(
         'description' => 'The host entity type of a component.',
         'type' => 'varchar',
-        'length' => 255, // @TODO: check length
+        'length' => 32,
         'not null' => FALSE,
         'default' => '',
       ),
@@ -107,6 +107,62 @@ function components_schema() {
     ),
   );
   
+  $schema['components_layout'] = array(
+    'description' => 'Stores layout settings for component types.',
+    'export' => array(
+      'key' => 'id',
+      'identifier' => 'components_layout',
+      'default hook' => 'components_layout_info',
+      'api' => array(
+        'owner' => 'components',
+        'api' => 'components',
+        'minimum_version' => 1,
+        'current_version' => 1,
+      ),
+    ),
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a component type layout setting.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'bundle' => array(
+        'description' => 'The machine-readable name of the component type.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'view_mode' => array(
+        'description' => 'The view mode used for the layout.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'label' => array(
+        'description' => 'The label of the layout.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'image' => array(// @TODO: size
+        'description' => 'Reference (fid) to the image of the layout.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+        'no export' => TRUE, // This field may not be exportable.
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'label' => array('label'),
+    ),
+  );
+  
   return $schema;
 }
 
@@ -148,20 +204,17 @@ function components_install() {
  * Implements hook_uninstall().
  */
 function components_uninstall() {
-  // Delete all field instances of all component types
-  foreach (field_info_instances('component') as $bundle => $bundle_instances) {
-    foreach ($bundle_instances as $field_name => $instance) {
-      field_delete_instance($instance);
-    }
-  }
-  
-  // Delete all field instances of type "component_reference", their data and the field itself
   foreach (field_info_instances() as $entity_type => $type_bundles) {
     foreach ($type_bundles as $bundle => $bundle_instances) {
       foreach ($bundle_instances as $field_name => $instance) {
         $field = field_info_field($field_name);
+        // Delete all field instances of type "component_reference", their data and the field itself
         if ($field['type'] == 'component_reference') {
           field_delete_field($field_name);
+        }
+        // Delete all field instances of all component types
+        elseif ($entity_type == 'component') {
+          field_delete_instance($instance);
         }
       }
     }
