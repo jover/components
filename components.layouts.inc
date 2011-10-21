@@ -15,6 +15,10 @@ function components_form_field_ui_display_overview_form_alter(&$form, &$form_sta
   }
 }
 
+function components_get_layouts() {
+  return ctools_export_crud_load_all('components_layout');
+}
+
 function components_layout_settings_vertical_tabs(&$form) {
   // Add additional settings vertical tab if not present.
   if (!isset($form['additional_settings'])) {
@@ -63,6 +67,17 @@ function components_layout_settings(&$form, &$form_state) {
   
   $layout = ctools_export_crud_load('components_layout', $export_id);
   
+  if (!$layout) {
+    $layout = ctools_export_crud_new('components_layout');
+    $layout->id = $export_id;
+    $layout->bundle = $bundle;
+    $layout->view_mode = $view_mode;
+    $layout->label = components_layout_settings_get_view_mode_label($view_mode);
+    $layout->image = NULL;
+  }
+  
+  $form['#components_layout'] = $layout;
+  
   // Add component type specific additional settings
   $form['additional_settings']['components_layout_settings'] = array(
     '#type' => 'fieldset',
@@ -76,14 +91,14 @@ function components_layout_settings(&$form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Layout label'),
     '#description' => t('An alias for the component type in combination with the current view mode.'),
-    '#default_value' => isset($layout->label) ? $layout->label : components_layout_settings_get_view_mode_label($view_mode),
+    '#default_value' => $layout->label,
   );
   
   $form['additional_settings']['components_layout_settings']['component_layout_image'] = array(
     '#type' => 'managed_file',
     '#title' => t('Layout image'),
     '#description' => t('A sample image of how the component type may look like in the current view mode.'),
-    '#default_value' => isset($layout->image) ? $layout->image : NULL,
+    '#default_value' => $layout->image,
     '#upload_location' => 'public://component-type-layouts/',
     '#upload_validators' => array(
       'file_validate_extensions' => array('png', 'gif', 'jpg', 'jpeg'),
@@ -100,30 +115,28 @@ function components_layout_settings_validate($form, &$form_state) {
 
 function components_layout_settings_save($form, &$form_state) {
   ctools_include('export');
-  
-  $bundle = $form['#bundle'];
-  $view_mode = $form['#view_mode'];
-  
-  $export_id = components_layout_settings_export_id($bundle, $view_mode);
-  if ($export_id == FALSE) {
-    return;
-  }
-  
-  $add_settings = &$form_state['values']['additional_settings'];
-  $label = isset($add_settings['component_layout_label']) ? components_layout_settings_get_view_mode_label($view_mode) : $add_settings['component_layout_label'];
-  $image = $add_settings['component_layout_image'];
-  
-  $layout = ctools_export_crud_new('components_layout');
-  $layout->id = $export_id;
+
+  $old_layout = $form_state['complete form']['#components_layout'];
+  $new_layout = $old_layout;
   
   // Delete the existing layout (if it exists)
-  ctools_export_crud_delete('components_layout', $layout);
+  ctools_export_crud_delete('components_layout', $old_layout);
   
-  $layout->bundle = $bundle;
-  $layout->view_mode = $view_mode;
-  $layout->label = $label;
-  $layout->image = $image;
+  $add_settings = &$form_state['values']['additional_settings'];
+  $new_layout->label = $add_settings['component_layout_label'];
+  $new_layout->image = $add_settings['component_layout_image'];
+  
+  $image_changed = ($old_layout->image == $new_layout->image) ? FALSE : TRUE;
+  if ($image_changed) {
+    // Delete old file
+    $old_file = file_load($old_layout->image);
+    file_delete($old_file);
+    // Save new file (permanently)
+    $new_file = file_load($new_layout->image);
+    $new_file->status = FILE_STATUS_PERMANENT;
+    file_save($new_file);
+  }
   
   // Save the new/updated layout
-  ctools_export_crud_save('components_layout', $layout);
+  ctools_export_crud_save('components_layout', $new_layout);
 }
