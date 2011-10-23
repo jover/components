@@ -158,9 +158,6 @@ function components_schema() {
       ),
     ),
     'primary key' => array('id'),
-    'unique keys' => array(
-      'label' => array('label'),
-    ),
   );
   
   return $schema;

@@ -16,6 +16,7 @@ function components_form_field_ui_display_overview_form_alter(&$form, &$form_sta
 }
 
 function components_get_layouts() {
+  ctools_include('export');
   return ctools_export_crud_load_all('components_layout');
 }
 

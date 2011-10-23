@@ -240,6 +240,7 @@ function component_wizard_cache_get($id) {
     $component = new stdClass();
     $component->type = 'unknown';
     $component->view_mode = NULL;
+    $component->layout = NULL;
   }
 
   return $component;
@@ -288,17 +289,21 @@ function component_wizard_add($entity_type, $entity_id, $field_name, $js = NULL,
     'cancel callback' => 'component_wizard_cancel',
     // this controls order, as well as form labels
     'order' => array(
-      'type' => t('Choose component type'),
-      'view_mode' => t('Choose view mode'),
+      /*'type' => t('Choose component type'),
+      'view_mode' => t('Choose view mode'),*/
+      'component_type_layout' => t('Choose component type and layout'),
     ),
     // here we map a step to a form id.
     'forms' => array(
       // e.g. this for the step at wombat/create
-      'type' => array(
+      /*'type' => array(
         'form id' => 'component_wizard_add_component_type',
       ),
       'view_mode' => array(
         'form id' => 'component_wizard_add_component_view_mode',
+      ),*/
+      'component_type_layout' => array(
+        'form id' => 'component_wizard_add_component_type_layout',
       ),
     ),
   );
@@ -309,7 +314,8 @@ function component_wizard_add($entity_type, $entity_id, $field_name, $js = NULL,
     // We reset the form when $step is NULL because that means they have
     // for whatever reason started over.
     component_wizard_cache_clear($component_id);
-    $step = 'type';
+    //$step = 'type';
+    $step = 'component_type_layout';
   }
   
   // This automatically gets defaults if there wasn't anything saved.
@@ -320,7 +326,7 @@ function component_wizard_add($entity_type, $entity_id, $field_name, $js = NULL,
   
   $component_types = components_get_types_names();
   
-  // Make sure we can't somehow accidentally go to an invalid animal.
+  // Make sure we can't somehow accidentally go to an invalid layout.
   if (empty($component_types[$component->type])) {
     $component->type = 'unknown';
   }
@@ -448,6 +454,72 @@ function component_wizard_add_component_view_mode_submit(&$form, &$form_state) {
   $form_state['component']->view_mode = $form_state['values']['view_mode'];
   // Override where to go next based on the component view mode selected.
   $form_state['clicked_button']['#next'] = $form_state['component']->type;
+}
+
+function component_wizard_add_component_type_layout($form, &$form_state) {
+  module_load_include('inc', 'components', 'components.layouts');
+  
+  $form_state['title'] = t('Choose component type and layout');
+  
+  $layouts = components_get_layouts();
+  
+  $bundles = array();
+  foreach ($layouts as $id => $layout) {
+    if (isset($layout->bundle)) {
+      $bundle = $layout->bundle;
+      $bundles[$bundle][$id] = $layout;
+    }
+  }
+  
+  foreach ($bundles as $bundle => $bundle_layouts) {
+    $bundle_label = component_type_get_label_by_type($bundle);
+    $form[$bundle]['label'] = array(
+      '#prefix' => '<h2>',
+      '#markup' => ($bundle_label) ? $bundle_label : $bundle,
+      '#suffix' => '</h2>',
+    );
+    
+    foreach ($bundle_layouts as $id => $layout) {
+      if (!is_null($layout->image) && $image_file = file_load($layout->image)) {
+        $image = theme('image_style', array(
+          'path' => $image_file->uri,
+          'style_name' => 'thumbnail',// @TODO: create custom image style
+          'alt' => $layout->label,
+          'title' => $layout->label,
+        ));
+      }
+      else { // Default image
+        $image = theme('image', array(
+          'path' => drupal_get_path('module', 'components') . '/images/components.png',
+          'alt' => $layout->label,
+          'title' => $layout->label,
+          'height' => 100, // @TODO: change to size of image style
+          'width' => 100,
+        ));
+      }
+      
+      $form[$bundle][$id] = array(
+        '#type' => 'radio',
+        '#title' => $image . '<span>' . $layout->label . '</span>',
+        '#return_value' => $id,
+        '#default_value' => FALSE, // @TODO: check default value
+        '#parents' => array('component_type_layout'),
+      );
+    }
+  }
+  
+  return $form;
+}
+
+function component_wizard_add_component_type_layout_submit(&$form, &$form_state) {
+  ctools_include('export');
+  $layout_id = $form_state['values']['component_type_layout'];
+  $layout = ctools_export_crud_load('components_layout', $layout_id);
+  $form_state['component']->layout = $layout->id;
+  $form_state['component']->type = $layout->bundle;
+  $form_state['component']->view_mode = $layout->view_mode;
+  // Override where to go next based on the component layout selected.
+  $form_state['clicked_button']['#next'] = $layout->bundle;
 }
 
 function component_wizard_edit($component, $js = NULL) {
