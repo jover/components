@@ -471,12 +471,19 @@ function component_wizard_add_component_type_layout($form, &$form_state) {
     }
   }
   
+  $form['component_types'] = array(
+    '#type' => 'vertical_tabs',
+  );
+  
   foreach ($bundles as $bundle => $bundle_layouts) {
     $bundle_label = component_type_get_label_by_type($bundle);
-    $form[$bundle]['label'] = array(
-      '#prefix' => '<h2>',
-      '#markup' => ($bundle_label) ? $bundle_label : $bundle,
-      '#suffix' => '</h2>',
+    
+    $form[$bundle] = array(
+      '#type' => 'fieldset',
+      '#title' => ($bundle_label) ? $bundle_label : $bundle,
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#group' => 'component_types',
     );
     
     foreach ($bundle_layouts as $id => $layout) {
@@ -507,7 +514,7 @@ function component_wizard_add_component_type_layout($form, &$form_state) {
       );
     }
   }
-  
+
   return $form;
 }
 
