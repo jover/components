@@ -1,0 +1,283 @@
+<?php
+
+/**
+ * @file
+ * Module file for the Components Group module.
+ */
+
+define('COMPONENTS_GROUP', 'components_group');
+
+// TEMPORARY solution ???
+module_load_include('inc', 'components_group', 'components_group.admin');
+
+/**
+ * Implements hook_help().
+ */
+function components_group_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#components-group':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      // @TODO: write help documentation
+      return $output;
+      break;
+  }
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+function components_group_entity_info() {
+  $entity_info = array();
+  
+  $entity_info[COMPONENTS_GROUP] = array(
+    'label' => t('Components Group'),
+    'entity class' => 'ComponentsGroup',
+    //'controller class' => 'EntityAPIController',
+    'controller class' => 'EntityAPIControllerExportable',
+    'base table' => 'components_group',
+    'fieldable' => FALSE,
+    'view modes' => array(),
+    'exportable' => TRUE,
+    'entity keys' => array(
+      'id' => 'cgid',
+      'label' => 'label',
+    ),
+    'bundles' => array(),
+    'label callback' => 'entity_class_label',
+    'uri callback' => 'entity_class_uri',
+    'access callback' => 'components_group_access',
+    'module' => 'components_group',
+  );
+  
+  return $entity_info;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function components_group_permission() {
+   return array(
+    'administer components groups' => array(
+      'title' => t('Administer components groups'),
+      'description' => t('Edit and view all components groups.')
+    ),
+  );
+}
+
+/******************************/
+/* COMPONENTS GROUP functions */
+/******************************/
+
+/**
+ * Creates a new Components Group object.
+ * 
+ * @param array $values
+ */
+function components_group_create(array $values) {
+  return new ComponentsGroup($values);
+}
+
+/**
+ * Saves a Components Group object.
+ * 
+ * @param ComponentsGroup $components_group
+ *   A Components Group object.
+ */
+function components_group_save(ComponentsGroup $components_group) {
+  return $components_group->save();
+}
+
+/**
+ * Load a Components Group object.
+ * 
+ * @param integer $cgid
+ *   Integer specifying the Components Group ID.
+ * @param boolean $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return ComponentsGroup
+ *   A Components Group object or FALSE if it cannot be found.
+ */
+function components_group_load($cgid, $reset = FALSE) {
+  $ids = isset($cgid) ? array($cgid) : array();
+  $results = components_group_load_multiple($ids, $reset);
+  return $results ? reset($results) : FALSE;
+}
+
+/**
+ * Loads multiple Components Group objects.
+ * 
+ * @param array $cgids
+ *   An array of Components Group IDs.
+ * @param boolean $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return ComponentsGroup[]
+ *   An array of Components Group objects.
+ * 
+ * @see entity_load()
+ * @see components_group_load()
+ */
+function components_group_load_multiple($cgids = array(), $reset = FALSE) {
+  return entity_load(COMPONENTS_GROUP, $cgids, array(), $reset);
+}
+
+/**
+ * Loads multiple Components Group objects by their entity and bundle.
+ * 
+ * @param $entity_type
+ *   The entity type of the Component Group.
+ * @param $bundle
+ *   The bundle of the Components Group.
+ * @param boolean $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return ComponentsGroup[]
+ *   An array of Components Group objects.
+ * 
+ * @see components_group_load_multiple()
+ */
+function components_group_load_by_entity_type_bundle($entity_type, $bundle, $reset = FALSE) {
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'components_group', '=')
+    ->propertyCondition('entity_type', $entity_type, '=')
+    ->propertyCondition('bundle', $bundle, '=');
+  
+  $components_group_ids = array();
+  if ($result = $query->execute()) {
+    $components_group_ids = array_keys($result['components_group']);
+  }
+  return components_group_load_multiple($components_group_ids, $reset);
+}
+
+/**
+ * Deletes a Components Group object.
+ * 
+ * @param integer $cgid
+ *   Integer specifying the Components Group ID.
+ * 
+ * @see components_group_delete_multiple()
+ */
+function components_group_delete($cgid) {
+  $components_group = components_group_load($cgid);
+  $components_group->delete();
+}
+
+/**
+ * Deletes multiple Components Group objects.
+ * 
+ * @param array $cgids
+ *   An array of Components Group IDs.
+ */
+function components_group_delete_multiple($cgids = array()) {
+  foreach ($cgids as $cgid) {
+    components_group_delete($cgid);
+  }
+}
+
+/**
+ * Access callback for the Components Group entity.
+ */
+function components_group_access($op, $entity_type) {
+  if (user_access('administer components groups')) {
+    return TRUE;
+  }
+}
+
+/**
+ * Generate an array for rendering the given Components Group.
+ * 
+ * @param $components_group
+ *   A Components Group object.
+ * 
+ * @return
+ *   An array as expected by drupal_render().
+ */
+function components_group_view($components_group) {
+  $build = $components_group->buildContent();
+  
+  $build += array(
+    '#theme' => 'components_group',
+    '#helga_course' => $components_group,
+  );
+  
+  return $build;
+}
+
+/**
+ * Process variables for components-group.tpl.php
+ * 
+ * The default components-group.tpl.php is located
+ * inside "MODULE-PATH/theme/components-group.tpl.php".
+ * Look in there for the full list of variables.
+ * 
+ * The $vars array contains the following arguments:
+ * - $components_group
+ * 
+ * @see components-group.tpl.php
+ */
+function template_preprocess_components_group(&$vars) {
+  $elements = &$vars['elements'];
+  $components_group = $elements['#components_group'];
+  
+  $vars['components_group'] = $components_group;
+  
+  // Flatten the Components Group's member fields
+  $vars = array_merge((array) $components_group, $vars);
+  
+  // Id
+  $vars['id'] = drupal_html_class($components_group->identifier());
+  // @TODO: should we use drupal_html_id() instead of drupal_html_class()?
+  $components = component_load_multiple(array(2));
+  // Components
+  if (is_array($components) && count($components) > 0) {
+    $vars['components'] = array();
+    foreach ($components as $component) {
+      $vars['components'][] = component_view($component);
+    }
+  }
+}
+
+/*********/
+/* THEME */
+/*********/
+
+/**
+ * Implements hook_theme().
+ */
+function components_group_theme() {
+  return array(
+    'components_group' => array(
+      'render element' => 'elements',
+      'template' => 'components-group',
+      'path' => drupal_get_path('module', 'components_group') . '/theme',
+    ),
+  );
+}
+
+/*********/
+/* CLASS */
+/*********/
+
+/**
+ * Components Group class
+ */
+class ComponentsGroup extends Entity {
+  
+  public $cgid;
+  public $label;
+  public $entity_type;
+  public $bundle;
+  
+  public function __construct($values = array()) {
+    parent::__construct($values, 'components_group');
+  }
+  
+  public function defaultUri() {
+    $cgid = $this->internalIdentifier();
+    return ($cgid) ? array('path' => 'components-group/' . $cgid) : NULL;
+  }
+  
+  public function identifier() {
+    return ($id = $this->internalIdentifier()) ? 'components_group_' . $id : NULL;
+  }
+  
+}

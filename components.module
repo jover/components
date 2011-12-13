@@ -7,11 +7,7 @@
 
 module_load_include('inc', 'components', 'components.layouts');
 
-function components_form_alter(&$form, &$form_state, $form_id) {
-  //debug($form_id);
-}
-
-function components_preprocess_node(&$vars) {
+/*function components_preprocess_node(&$vars) {
   // Include the CTools tools that we need.
   ctools_include('ajax');
   ctools_include('modal');
@@ -52,7 +48,7 @@ function components_preprocess_node(&$vars) {
   foreach($components as $component) {
     $content['components'][$component->cid] = component_view($component);
   }
-}
+}*/
 
 /**
  * Implements hook_help().

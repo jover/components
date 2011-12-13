@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the components group module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function components_group_schema() {
+  $schema['components_group'] = array(
+    'description' => 'The base table for components groups.',
+    'fields' => array(
+      'cgid' => array(
+        'description' => 'The primary identifier of a components group.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'label' => array(
+        'description' => 'The label of a components group.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+        'translatable' => TRUE,
+      ),
+      'entity_type' => array(
+        'description' => 'The entity a components group is related to.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'bundle' => array(
+        'description' => 'The entity bundle a components group is related to.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'data' => array(
+        'description' => 'Serialized data containing the component group properties.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+        'serialize' => TRUE,
+      ),
+    ) + entity_exportable_schema_fields(),
+    'indexes' => array(
+      'component_label' => array('label'),
+      'component_group_host' => array('entity_type', 'bundle', 'cgid'),
+    ),
+    'primary key' => array('cgid'),
+  );
+  
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function components_group_install() {
+  
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function components_group_uninstall() {
+  
+}
