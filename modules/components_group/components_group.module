@@ -196,7 +196,7 @@ function components_group_view($components_group) {
   
   $build += array(
     '#theme' => 'components_group',
-    '#helga_course' => $components_group,
+    '#components_group' => $components_group,
   );
   
   return $build;
@@ -217,8 +217,10 @@ function components_group_view($components_group) {
 function template_preprocess_components_group(&$vars) {
   $elements = &$vars['elements'];
   $components_group = $elements['#components_group'];
+  $components = $elements['#components'];
   
   $vars['components_group'] = $components_group;
+  $vars['components'] = NULL;
   
   // Flatten the Components Group's member fields
   $vars = array_merge((array) $components_group, $vars);
@@ -226,7 +228,7 @@ function template_preprocess_components_group(&$vars) {
   // Id
   $vars['id'] = drupal_html_class($components_group->identifier());
   // @TODO: should we use drupal_html_id() instead of drupal_html_class()?
-  $components = component_load_multiple(array(2));
+  
   // Components
   if (is_array($components) && count($components) > 0) {
     $vars['components'] = array();

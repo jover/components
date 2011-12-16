@@ -30,33 +30,104 @@ function components_group_field_ui_form_params($form) {
 }
 
 /**
+ * Return an array with all "entity type - bundle" combinations which are using
+ * components groups.
+ * 
+ * @return array $return
+ *   An array in the form of:
+ *     Array (
+ *       [node] => Array (
+ *         [0] => article
+ *         [1] => page
+ *       )
+ *       [custom_entity] => Array (
+ *         [0] => custom_bundle
+ *       )
+ *     )
+ */
+function components_group_get_host_entity_types() {
+  $return = array();
+  // @TODO: cache results
+  $query = db_select('components_group', 'cg');
+  $query->fields('cg', array('entity_type', 'bundle'));
+  $query->condition('cg.status', 1, '=');
+  $query->distinct();
+  $results = $query->execute();
+  
+  foreach ($results as $result) {
+    $entity_type = $result->entity_type;
+    $bundle = $result->bundle;
+    if (isset($return[$entity_type])) {
+      $return[$entity_type] = array_merge($return[$entity_type], array($bundle));
+    }
+    else {
+      $return[$entity_type] = array($bundle);
+    }
+  }
+  
+  return $return;
+}
+
+/**
+ * Checks wether the given combination of "entity type - bundle" is
+ * using components groups. Returns TRUE if so, otherwise FALSE.
+ * 
+ * @param $entity_type
+ *   The entity type of an entity (e.g. "node",...).
+ * @param $bundle
+ *   The bundle of an entity (e.g. "article", "page",...).
+ * @return boolean $result
+ *   TRUE or FALSE, depending of the combination
+ *   "entity type - bundle" uses components groups
+ */
+function components_group_entity_type_uses_components_groups($entity_type, $bundle) {
+  $result = FALSE;
+  $entity_types = components_group_get_host_entity_types();
+  if (isset($entity_types[$entity_type])) {
+    if (in_array($bundle, $entity_types[$entity_type])) {
+      $result = TRUE;
+    }
+  }
+  return $result;
+}
+
+/**
  * Implements hook_field_attach_view_alter().
  */
 function components_group_field_attach_view_alter(&$element, $context) {
   if (isset($element['#entity_type']) && isset($element['#bundle'])) {
-    components_group_attach_components_groups($element);
+    if (components_group_entity_type_uses_components_groups($element['#entity_type'], $element['#bundle'])) {
+      components_group_attach_components_groups($element, $context);
+    }
   }
 }
 
-function components_group_attach_components_groups(&$element) {
+function components_group_attach_components_groups(&$element, $context) {
   $entity_type = $element['#entity_type'];
   $bundle = $element['#bundle'];
   
+  $element['#components_groups_context'] = $context;
   $element['#components_groups'] = components_group_load_by_entity_type_bundle($entity_type, $bundle);
   
   $element['#pre_render'][] = 'components_group_pre_render';
 }
 
 function components_group_pre_render($element) {
-  if (empty($element['#components_groups'])) {
+  if (empty($element['#components_groups_context']) || empty($element['#components_groups'])) {
     return $element;
   }
   
+  $context = $element['#components_groups_context'];
+  list($entity_id) = entity_extract_ids($context['entity_type'], $context['entity']);
+  
   foreach ($element['#components_groups'] as $components_group) {
     $element[$components_group->identifier()] = array(
-      '#theme' => 'components_group',
-      '#components_group' => $components_group,
-    );
+      '#components' => component_load_all_by_host(
+        $context['entity_type'],
+        $entity_id,
+        $components_group->internalIdentifier()
+      ),
+    ) + components_group_view($components_group);
   }
   
   return $element;
@@ -75,7 +146,7 @@ function components_group_form_field_ui_field_overview_form_alter(&$form, &$form
  * Using hook_form_field_ui_display_overview_form_alter().
  */
 function components_group_form_field_ui_display_overview_form_alter(&$form, &$form_state) {
-  //components_group_form_field_ui_overview_form_alter($form, $form_state, TRUE);
+  components_group_form_field_ui_overview_form_alter($form, $form_state, TRUE);
 }
 
 /**

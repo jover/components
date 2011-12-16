@@ -7,49 +7,6 @@
 
 module_load_include('inc', 'components', 'components.layouts');
 
-/*function components_preprocess_node(&$vars) {
-  // Include the CTools tools that we need.
-  ctools_include('ajax');
-  ctools_include('modal');
-  // Add CTools' javascript to the page.
-  ctools_modal_add_js();
-  // Create our own javascript that will be used to theme a modal.
-  $modal_style = array(
-    'components-style' => array(
-      'modalSize' => array(
-        'type' => 'scale',
-        'width' => .8,
-        'height' => .8,
-        'addWidth' => 0,
-        'addHeight' => 0,
-        'contentRight' => 25,
-        'contentBottom' => 45,
-      ),
-      'modalOptions' => array(
-        'opacity' => .8,
-        'background-color' => '#000',
-      ),
-      'animation' => 'fadeIn',
-      'modalTheme' => 'ComponentsModal',
-      'throbber' => theme('image', array('path' => ctools_image_path('ajax-loader.gif', 'ctools_ajax_sample'), 'alt' => t('Loading...'), 'title' => t('Loading'))),
-    ),
-  );
-  drupal_add_js($modal_style, 'setting');
-  ctools_add_js('components', 'components');
-  ctools_add_css('components', 'components');
-  
-  $content = &$vars['content'];
-  
-  $content['components_action_links'] = array(
-    '#markup' => ctools_modal_text_button(t('Add component'), 'component/add/node/' . $vars['nid'] . '/default/nojs', t('Add component'), 'ctools-modal-components-style'),
-  );
-  
-  $components = component_load_all_by_host('node', $vars['nid']);
-  foreach($components as $component) {
-    $content['components'][$component->cid] = component_view($component);
-  }
-}*/
-
 /**
  * Implements hook_help().
  */
@@ -306,11 +263,16 @@ function component_load_multiple($cids = array(), $conditions = array(), $reset 
   return entity_load('component', $cids, $conditions, $reset);
 }
 
-function component_load_all_by_host($host_entity_type, $host_entity_id) {
+function component_load_all_by_host($host_entity_type, $host_entity_id, $host_entity_group = FALSE) {
   $query = db_select('component', 'c')
     ->fields('c', array('cid'))
     ->condition('c.host_entity_type', $host_entity_type, '=')
     ->condition('c.host_entity_id', $host_entity_id, '=');
+  
+  if ($host_entity_group && is_numeric($host_entity_group)) {
+    $query->condition('c.host_entity_group', $host_entity_group, '=');
+  }
+  
   // @TODO: order by weight
   $result = $query->execute();
   
