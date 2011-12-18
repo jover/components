@@ -306,15 +306,46 @@ function template_preprocess_components_group(&$vars) {
   ctools_add_js('components', 'components');
   ctools_add_css('components', 'components');
   
-  $vars['components_group_add_link'] = NULL;
-  $vars['components_group_add_link'] = array(
-    '#markup' => ctools_modal_text_button(
-      t('Add component'),
-      'component/add/' . $host_entity_type . '/' . $host_entity_id . '/' . $components_group_id . '/nojs',
-      t('Add component'),
-      'ctools-modal-components-style'
-    ),
-  );
+  if (module_exists('contextual')) {
+    $links = array();
+    // Normally we must use ctools_modal_text_button() to create this link,
+    // but this is not compatible with the link structure for contextual links.
+    $links[] = array( 
+      'title' => t('Add component'),
+      'href' => 'component/add/' . $host_entity_type . '/' . $host_entity_id . '/' . $components_group_id . '/nojs',
+      'html' => TRUE,
+      'attributes' => array(
+        'class' => array('ctools-modal-components-style', 'ctools-use-modal'),
+        'title' => t('Add component'),
+      ),
+    );
+    
+    $vars['contextual_links'] = array(
+      '#theme' => 'links__contextual',
+      '#links' => $links,
+      '#attributes' => array('class' => array('contextual-links')),
+      '#attached' => array(
+        'library' => array(array('contextual', 'contextual-links')),
+      ),
+      '#prefix' => '<div class="contextual-links-wrapper">',
+      '#suffix' => '</div>',
+    );
+    
+    $vars['classes_array'][] = 'contextual-links-region';
+  }
+  else {
+    $vars['contextual_links'] = NULL;
+    $vars['contextual_links'] = array(
+      '#markup' => ctools_modal_text_button(
+        t('Add component'),
+        'component/add/' . $host_entity_type . '/' . $host_entity_id . '/' . $components_group_id . '/nojs',
+        t('Add component'),
+        'ctools-modal-components-style'
+      ),
+      '#prefix' => '<div class="contextual-links-wrapper">',
+      '#suffix' => '</div>',
+    );
+  }
 }
 
 /*********/

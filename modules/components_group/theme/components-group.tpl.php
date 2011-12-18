@@ -1,8 +1,6 @@
 <div id="<?php print $id; ?>" class="<?php print implode(' ', $classes_array); ?>">
-  <?php if ($components_group_add_link): ?>
-    <div class"components-group-add-link">
-      <?php print render($components_group_add_link); ?>
-    </div>
+  <?php if ($contextual_links): ?>
+    <?php print render($contextual_links); ?>
   <?php endif; ?>
   <?php if ($components): ?>
     <div class="components">
