@@ -69,6 +69,9 @@ function components_group_form_field_ui_display_overview_form_alter(&$form, &$fo
   
   $admin_form = new ComponentsGroupAdminFormDefault($form, $form_state);
   $admin_form_decorated = new ComponentsGroupAdminFormDisplayDecorator($admin_form);
+  
+  $form = $admin_form_decorated->form;
+  $form_state = $admin_form_decorated->form_state;
 }
 
 function components_group_display_overview_row_region($row) {

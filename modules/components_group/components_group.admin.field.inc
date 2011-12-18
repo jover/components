@@ -125,6 +125,9 @@ function components_group_form_field_ui_field_overview_form_alter(&$form, &$form
   
   $admin_form = new ComponentsGroupAdminFormDefault($form, $form_state);
   $admin_form_decorated = new ComponentsGroupAdminFormFieldDecorator($admin_form);
+  
+  $form = $admin_form_decorated->form;
+  $form_state = $admin_form_decorated->form_state;
 }
 
 function components_group_field_overview_row_region($row) {

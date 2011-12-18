@@ -19,9 +19,9 @@ abstract class ComponentsGroupAdminForm {
 
 class ComponentsGroupAdminFormDefault extends ComponentsGroupAdminForm {
   
-  public function __construct(&$form, &$form_state) {
-    $this->form = &$form;
-    $this->form_state = &$form_state;
+  public function __construct($form, $form_state) {
+    $this->form = $form;
+    $this->form_state = $form_state;
     $this->setFormParams();
     $this->setComponentsGroups();
     $this->decorateForm();
@@ -110,8 +110,8 @@ abstract class ComponentsGroupAdminFormDecorator extends ComponentsGroupAdminFor
   protected $admin_form;
   
   protected function setFormParams() {
-    $this->form = &$this->admin_form->form;
-    $this->form_state = &$this->admin_form->form_state;
+    $this->form = $this->admin_form->form;
+    $this->form_state = $this->admin_form->form_state;
     $this->entity_type = $this->admin_form->entity_type;
     $this->bundle = $this->admin_form->bundle;
     $this->components_groups = $this->admin_form->components_groups;
