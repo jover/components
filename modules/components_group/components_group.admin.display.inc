@@ -8,10 +8,17 @@
 
 class ComponentsGroupAdminFormDisplayDecorator extends ComponentsGroupAdminFormDecorator {
   
+  protected $view_mode;
+  
   public function __construct(ComponentsGroupAdminForm $admin_form) {
     $this->admin_form = $admin_form;
     $this->setFormParams();
     $this->decorateForm();
+  }
+  
+  protected function setFormParams() {
+    parent::setFormParams();
+    $this->view_mode = $this->admin_form->form['#view_mode'];
   }
   
   protected function decorateForm() {

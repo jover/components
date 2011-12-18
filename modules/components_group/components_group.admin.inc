@@ -11,7 +11,6 @@ abstract class ComponentsGroupAdminForm {
   public $form_state;
   protected $entity_type;
   protected $bundle;
-  protected $view_mode;
   protected $components_groups;
   
   protected abstract function decorateForm();
@@ -31,7 +30,6 @@ class ComponentsGroupAdminFormDefault extends ComponentsGroupAdminForm {
   protected function setFormParams() {
     $this->entity_type = $this->form['#entity_type'];
     $this->bundle = $this->form['#bundle'];
-    $this->view_mode = $this->form['#view_mode'];
   }
   
   protected function setComponentsGroups() {
@@ -116,7 +114,6 @@ abstract class ComponentsGroupAdminFormDecorator extends ComponentsGroupAdminFor
     $this->form_state = &$this->admin_form->form_state;
     $this->entity_type = $this->admin_form->entity_type;
     $this->bundle = $this->admin_form->bundle;
-    $this->view_mode = $this->admin_form->view_mode;
     $this->components_groups = $this->admin_form->components_groups;
   }
   

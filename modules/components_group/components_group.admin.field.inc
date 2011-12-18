@@ -22,7 +22,6 @@ class ComponentsGroupAdminFormFieldDecorator extends ComponentsGroupAdminFormDec
     foreach ($this->components_groups as $group) {
       $name = $group->identifier();
       $group_data = $group->data;
-      $view_mode = $this->view_mode;
       
       $table[$name]['#region_callback'] = 'components_group_field_overview_row_region';
       
