@@ -25,6 +25,25 @@ function components_group_help($path, $arg) {
 }
 
 /**
+ * Implements hook_menu().
+ */
+function components_group_menu() {
+  $items = array();
+  
+  $items['components-group/%components_group/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('components_group_delete_form', 1),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer components groups'),
+    'type' => MENU_CALLBACK,
+    //'file' => 'components_group.admin.inc',
+  );
+  
+  return $items;
+}
+
+/**
  * Implements hook_entity_info().
  */
 function components_group_entity_info() {
@@ -58,10 +77,10 @@ function components_group_entity_info() {
  */
 function components_group_permission() {
    return array(
-    'administer components groups' => array(
-      'title' => t('Administer components groups'),
-      'description' => t('Edit and view all components groups.')
-    ),
+     'administer components groups' => array(
+       'title' => t('Administer components groups'),
+       'description' => t('Edit and view all components groups.')
+     ),
   );
 }
 
@@ -191,13 +210,30 @@ function components_group_access($op, $entity_type) {
  * @return
  *   An array as expected by drupal_render().
  */
-function components_group_view($components_group) {
+function components_group_view($components_group, $host_entity_type, $host_entity_id, $host_view_mode) {
   $build = $components_group->buildContent();
   
   $build += array(
     '#theme' => 'components_group',
     '#components_group' => $components_group,
+    '#host_entity_type' => $host_entity_type,
+    '#host_entity_id' => $host_entity_id,
   );
+  
+  // If the view mode is full and there are no settings for it,
+  // change the view mode to default and try again.
+  if ($host_view_mode == 'full') {
+    if (!isset($components_group->data['display'][$host_view_mode])) {
+      $host_view_mode = 'default';
+    }
+  }
+  
+  // Try to get the weight for this components group specifically for the given view mode.
+  if (isset($components_group->data['display'][$host_view_mode]['weight'])) {
+    $build += array(
+      '#weight' => $components_group->data['display'][$host_view_mode]['weight'],
+    );
+  }
   
   return $build;
 }
@@ -217,7 +253,9 @@ function components_group_view($components_group) {
 function template_preprocess_components_group(&$vars) {
   $elements = &$vars['elements'];
   $components_group = $elements['#components_group'];
-  $components = $elements['#components'];
+  $components_group_id = $components_group->internalIdentifier();
+  $host_entity_type = $elements['#host_entity_type'];
+  $host_entity_id = $elements['#host_entity_id'];
   
   $vars['components_group'] = $components_group;
   $vars['components'] = NULL;
@@ -230,12 +268,53 @@ function template_preprocess_components_group(&$vars) {
   // @TODO: should we use drupal_html_id() instead of drupal_html_class()?
   
   // Components
+  $components = component_load_all_by_host($host_entity_type, $host_entity_id, $components_group_id);
   if (is_array($components) && count($components) > 0) {
     $vars['components'] = array();
     foreach ($components as $component) {
       $vars['components'][] = component_view($component);
     }
   }
+  
+  // Include the CTools tools that we need.
+  ctools_include('ajax');
+  ctools_include('modal');
+  // Add CTools' javascript to the page.
+  ctools_modal_add_js();
+  // Create our own javascript that will be used to theme a modal.
+  $modal_style = array(
+    'components-style' => array(
+      'modalSize' => array(
+        'type' => 'scale',
+        'width' => .8,
+        'height' => .8,
+        'addWidth' => 0,
+        'addHeight' => 0,
+        'contentRight' => 25,
+        'contentBottom' => 45,
+      ),
+      'modalOptions' => array(
+        'opacity' => .8,
+        'background-color' => '#000',
+      ),
+      'animation' => 'fadeIn',
+      'modalTheme' => 'ComponentsModal',
+      'throbber' => theme('image', array('path' => ctools_image_path('ajax-loader.gif', 'ctools_ajax_sample'), 'alt' => t('Loading...'), 'title' => t('Loading'))),
+    ),
+  );
+  drupal_add_js($modal_style, 'setting');
+  ctools_add_js('components', 'components');
+  ctools_add_css('components', 'components');
+  
+  $vars['components_group_add_link'] = NULL;
+  $vars['components_group_add_link'] = array(
+    '#markup' => ctools_modal_text_button(
+      t('Add component'),
+      'component/add/' . $host_entity_type . '/' . $host_entity_id . '/' . $components_group_id . '/nojs',
+      t('Add component'),
+      'ctools-modal-components-style'
+    ),
+  );
 }
 
 /*********/

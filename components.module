@@ -37,7 +37,7 @@ function components_menu() {
   
   // @TODO: title callback with type name
   // @TODO: access arguments 'create any $type component'
-  $items['component/add/%/%/default/%ctools_js'] = array( // component/add/entity_type/entity_id/group/ajax
+  $items['component/add/%/%/%/%ctools_js'] = array( // component/add/entity_type/entity_id/group/ajax
     'title' => 'Add component',
     'page callback' => 'component_wizard_add',
     'page arguments' => array(2, 3, 4, 5),

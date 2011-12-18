@@ -5,7 +5,7 @@
  * Components Group function for administration purposes.
  */
 
-class ComponentsGroupFormParams {
+abstract class ComponentsGroupFormParams {
   
   public $entity_type;
   public $bundle;
@@ -15,7 +15,6 @@ class ComponentsGroupFormParams {
   public function __construct($form) {
     $this->entity_type = $form['#entity_type'];
     $this->bundle = $form['#bundle'];
-    $this->region_callback = 'components_group_field_overview_row_region';
     $this->setGroups();
   }
   
@@ -25,8 +24,22 @@ class ComponentsGroupFormParams {
   
 }
 
-function components_group_field_ui_form_params($form) {
-  return new ComponentsGroupFormParams($form);
+class ComponentsGroupFormParamsFieldOverview extends ComponentsGroupFormParams {
+  
+  public function __construct($form) {
+    parent::__construct($form);
+    $this->region_callback = 'components_group_field_overview_row_region';
+  }
+  
+}
+
+class ComponentsGroupFormParamsDisplayOverview extends ComponentsGroupFormParams {
+    
+  public function __construct($form) {
+    parent::__construct($form);
+    $this->region_callback = 'components_group_display_overview_row_region';
+  }
+  
 }
 
 /**
@@ -121,13 +134,12 @@ function components_group_pre_render($element) {
   list($entity_id) = entity_extract_ids($context['entity_type'], $context['entity']);
   
   foreach ($element['#components_groups'] as $components_group) {
-    $element[$components_group->identifier()] = array(
-      '#components' => component_load_all_by_host(
-        $context['entity_type'],
-        $entity_id,
-        $components_group->internalIdentifier()
-      ),
-    ) + components_group_view($components_group);
+    $element[$components_group->identifier()] = components_group_view(
+      $components_group,
+      $context['entity_type'],
+      $entity_id,
+      $context['view_mode']
+    );
   }
   
   return $element;
@@ -147,6 +159,7 @@ function components_group_form_field_ui_field_overview_form_alter(&$form, &$form
  */
 function components_group_form_field_ui_display_overview_form_alter(&$form, &$form_state) {
   components_group_form_field_ui_overview_form_alter($form, $form_state, TRUE);
+  //dd($form);
 }
 
 /**
@@ -158,11 +171,15 @@ function components_group_form_field_ui_overview_form_alter(&$form, &$form_state
     return;
   }
   
-  $params = components_group_field_ui_form_params($form);
+  $params = ($display_overview) ? 
+    new ComponentsGroupFormParamsDisplayOverview($form):
+    new ComponentsGroupFormParamsFieldOverview($form);
+  
+  $view_mode = $form['#view_mode'];
   
   $form['#components_group_ids'] = array();
   foreach ($params->groups as $group) {
-    $form['#components_group_ids'][] = $group->cgid;
+    $form['#components_group_ids'][] = $group->internalIdentifier();
   }
   
   $table = &$form['fields'];
@@ -202,15 +219,17 @@ function components_group_form_field_ui_overview_form_alter(&$form, &$form_state
     unset($parent_options[$name]);
     
     $table[$name] = array(
+      '#display_overview' => $display_overview,
       '#attributes' => array('class' => array('draggable', 'tabledrag-leaf', 'field-components-group'), 'id' => $html_id),
       '#row_type' => 'components_group',
       '#region_callback' => $params->region_callback,
+      '#js_settings' => array('rowHandler' => 'components_group'),
       'label' => array(
         '#markup' => check_plain($group->label),
       ),
       'weight' => array(
         '#type' => 'textfield',
-        '#default_value' => $group->weight,
+        //'#default_value' => $group->weight,
         '#size' => 3,
         '#attributes' => array('class' => array('field-weight')),
       ),
@@ -232,9 +251,7 @@ function components_group_form_field_ui_overview_form_alter(&$form, &$form_state
       'components_group_name' => array(
         '#markup' => check_plain($name),
       ),
-      'type' => array(
-        '#markup' => t('Components Group'),
-      ),
+      'format' => array(),
       'widget_type' => array(),
       'edit' => array(
         '#type' => 'link',
@@ -242,13 +259,40 @@ function components_group_form_field_ui_overview_form_alter(&$form, &$form_state
         '#href' => '',
         '#options' => array('attributes' => array('title' => t('Edit instance settings.'))),
       ),
-      'delete' => array(
+    );
+
+    if (!$display_overview) {
+      $table[$name]['format'] = array(
+        '#markup' => t('Components Group'),
+      );
+      $table[$name]['delete'] = array(
         '#type' => 'link',
         '#title' => t('delete'),
-        '#href' => '',
+        '#href' => 'components-group/' . $group->internalIdentifier() . '/delete',
         '#options' => array('attributes' => array('title' => t('Delete instance.'))),
-      ),
-    );
+      );
+    }
+    else {
+      $group_data = $group->data;
+      
+      $default_weight = 0;
+      if (isset($group_data['display'][$view_mode]['weight'])) {
+        $default_weight = $group_data['display'][$view_mode]['weight'];
+      }
+      $table[$name]['weight']['#default_value'] = $default_weight;
+      
+      $default_visible = 0;
+      if (isset($group_data['display'][$view_mode]['visible'])) {
+        $default_visible = $group_data['display'][$view_mode]['visible'];
+      }
+      $table[$name]['format'] = array(
+        'visible' => array(
+          '#type' => 'select',
+          '#options' => array(1 => t('Visible'), 0 => t('Hidden')),
+          '#default_value' => $default_visible,
+        ),
+      );
+    }
   }
   
   if (!$display_overview) {
@@ -319,23 +363,41 @@ function components_group_form_field_ui_overview_form_alter(&$form, &$form_state
   $path = drupal_get_path('module', 'components_group');
   $form['#attached']['css'][] = $path . '/components-group.field-ui.css';
   
-  $form['#validate'][] = 'components_group_field_overview_validate';
-  $form['#submit'][] = 'components_group_field_overview_submit';
+  if ($display_overview) {
+    $form['#submit'][] = 'components_group_display_overview_submit';
+  }
+  else {
+    $form['#validate'][] = 'components_group_field_overview_validate';
+    $form['#submit'][] = 'components_group_field_overview_submit';
+  }
 }
 
 function components_group_field_overview_row_region($row) {
   switch ($row['#row_type']) {
     case 'components_group':
       return 'main';
+      break;
     case 'add_new_components_group':
       // If no input in 'label', assume the row has not been dragged out of the
       // 'add new' section.
       return (!empty($row['label']['#value']) ? 'main' : 'add_new');
+      break;
   }
 }
 
+function components_group_display_overview_row_region($row) {
+  switch ($row['#row_type']) {
+    case 'components_group':
+      return ($row['format']['visible']['#value'] == 1) ? 'visible' : 'hidden';
+      break;
+  }
+}
+
+/**
+ * Validate handler for the field overview form.
+ */
 function components_group_field_overview_validate($form, &$form_state) {
-  if ($form_state['values']['fields']['_add_new_components_group']) {
+  if (isset($form_state['values']['fields']['_add_new_components_group'])) {
     $group = $form_state['values']['fields']['_add_new_components_group'];
     // Validate if any information was provided in the 'add new components group' row
     if (array_filter(array($group['label']))) {
@@ -347,6 +409,9 @@ function components_group_field_overview_validate($form, &$form_state) {
   }
 }
 
+/**
+ * Submit handler for the field overview form.
+ */
 function components_group_field_overview_submit($form, &$form_state) {
   $form_values = $form_state['values']['fields'];
   $entity_type = $form['#entity_type'];
@@ -360,7 +425,7 @@ function components_group_field_overview_submit($form, &$form_state) {
       'entity_type' => $entity_type,
       'bundle' => $bundle,
       'label' => $values['label'],
-      'data' => '',
+      'data' => array(),
     ));
     
     if (components_group_save($components_group)) {
@@ -380,4 +445,68 @@ function components_group_field_overview_submit($form, &$form_state) {
       components_group_save($components_group);
     }
   }
+}
+
+/**
+ * Submit handler for the display overview form.
+ */
+function components_group_display_overview_submit($form, &$form_state) {
+  $form_values = $form_state['values'];
+  $entity_type = $form['#entity_type'];
+  $bundle = $form['#bundle'];
+  $view_mode = $form['#view_mode'];
+  
+  foreach ($form['#components_group_ids'] as $cgid) {
+    if ($components_group = components_group_load($cgid)) {
+      $name = $components_group->identifier();
+      if (isset($form_values['fields'][$name])) {
+        $values = $form_values['fields'][$name];
+        $settings = &$components_group->data;
+        $settings['display'][$view_mode] = array(
+          'weight' => $values['weight'],
+          'visible' => $values['format']['visible'],
+        );
+        components_group_save($components_group);
+      }
+    }
+  }
+}
+
+/**
+ * Menu callback: returns a form for removing a components group.
+ */
+function components_group_delete_form($form, &$form_state, $components_group) {
+  $path = drupal_get_destination();
+  
+  $form['cgid'] = array(
+    '#type' => 'hidden',
+    '#value' => $components_group->internalIdentifier(),
+  );
+  
+  $form['redirect'] = array(
+    '#type' => 'hidden',
+    '#value' => $path,
+  );
+  
+  return comfirm_form(
+    $form,
+    t('Are you sure you want to delete the components group %label?', array('%label' => $components_group->identifier())),
+    $path,
+    t('This action cannot be undone.'),
+    t('Delete'),
+    t('Cancel'),
+    'confirm'
+  );
+}
+
+function components_group_delete_form_submit($form, &$form_state) {
+  if ($form_state['values']['confirm']) {
+    $components_group = components_group_load($form_state['values']['cgid']);
+    //components_group_delete($components_group->internalIdentifier());
+    watchdog('components_group', 'Components Group: deleted cgid=@cgid', array('@cgid' => $components_group->internalIdentifier()));
+    drupal_set_message(t('The components group (%label) has been deleted.', array('%label' => $components_group->label)));
+  }
+  
+  dd(drupal_get_destination());
+  //$form_state['redirect'] = '';
 }
