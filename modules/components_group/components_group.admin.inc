@@ -90,12 +90,7 @@ class ComponentsGroupAdminFormDefault extends ComponentsGroupAdminForm {
         ),
         'format' => array(),
         'widget_type' => array(),
-        'edit' => array(
-          '#type' => 'link',
-          '#title' => t('edit'),
-          '#href' => '',
-          '#options' => array('attributes' => array('title' => t('Edit instance settings.'))),
-        ),
+        'edit' => array(),
       );
       
       $path = drupal_get_path('module', 'components_group');
@@ -229,7 +224,8 @@ function components_group_pre_render($element) {
  * Menu callback: returns a form for removing a components group.
  */
 function components_group_delete_form($form, &$form_state, $components_group) {
-  $path = drupal_get_destination();
+  $admin_path = _field_ui_bundle_admin_path($components_group->entity_type, $components_group->bundle);
+  $admin_path .= '/fields';
   
   $form['cgid'] = array(
     '#type' => 'hidden',
@@ -238,13 +234,13 @@ function components_group_delete_form($form, &$form_state, $components_group) {
   
   $form['redirect'] = array(
     '#type' => 'hidden',
-    '#value' => $path,
+    '#value' => $admin_path,
   );
   
-  return comfirm_form(
+  return confirm_form(
     $form,
-    t('Are you sure you want to delete the components group %label?', array('%label' => $components_group->identifier())),
-    $path,
+    t('Are you sure you want to delete the components group %label?', array('%label' => $components_group->label)),
+    $admin_path,
     t('This action cannot be undone.'),
     t('Delete'),
     t('Cancel'),
@@ -255,9 +251,47 @@ function components_group_delete_form($form, &$form_state, $components_group) {
 function components_group_delete_form_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     $components_group = components_group_load($form_state['values']['cgid']);
-    //components_group_delete($components_group->internalIdentifier());
+    components_group_delete($components_group->internalIdentifier());
     watchdog('components_group', 'Components Group: deleted cgid=@cgid', array('@cgid' => $components_group->internalIdentifier()));
     drupal_set_message(t('The components group (%label) has been deleted.', array('%label' => $components_group->label)));
   }
-  //$form_state['redirect'] = '';
+  $form_state['redirect'] = $form_state['values']['redirect'];
+}
+
+/**
+ * Menu callback: returns a form for editing a components group.
+ */
+function components_group_edit_form($form, &$form_state, $components_group) {
+  $entity_type = $components_group->entity_type;
+  $bundle = $components_group->bundle;
+  $bundles = field_info_bundles();
+  $bundle_label = $bundles[$entity_type][$bundle]['label'];
+  
+  drupal_set_title($components_group->label);
+  
+  $form['components_group'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('%label components group settings', array('%label' => $components_group->label)),
+    '#description' => t('These settings apply to the %label components group that is part of the %type type.', array(
+      '%label' => $components_group->label,
+      '%type' => $bundle_label,
+    )),
+  );
+  
+  $form['components_group']['label'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Label'),
+    '#default_value' => $components_group->label,
+    '#required' => TRUE,
+    '#weight' => -20,
+  );
+  
+  $form['components_group'][] = array();
+  
+  return $form;
+}
+
+function components_group_edit_form_submit($form, &$form_state) {
+  
 }

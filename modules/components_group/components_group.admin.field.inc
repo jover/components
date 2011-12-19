@@ -22,17 +22,26 @@ class ComponentsGroupAdminFormFieldDecorator extends ComponentsGroupAdminFormDec
     foreach ($this->components_groups as $group) {
       $name = $group->identifier();
       $group_data = $group->data;
+      $admin_path = _field_ui_bundle_admin_path($this->entity_type, $this->bundle);
       
       $table[$name]['#region_callback'] = 'components_group_field_overview_row_region';
       
       $table[$name]['format'] = array(
         '#markup' => t('Components Group'),
       );
+      
+      $table[$name]['edit'] = array(
+        '#type' => 'link',
+        '#title' => t('edit'),
+        '#href' => $admin_path . '/components-groups/' . $group->internalIdentifier(),
+        '#options' => array('attributes' => array('title' => t('Edit settings'))),
+      );
+      
       $table[$name]['delete'] = array(
         '#type' => 'link',
         '#title' => t('delete'),
-        '#href' => 'components-group/' . $group->internalIdentifier() . '/delete',
-        '#options' => array('attributes' => array('title' => t('Delete instance.'))),
+        '#href' => $admin_path . '/components-groups/' . $group->internalIdentifier() . '/delete',
+        '#options' => array('attributes' => array('title' => t('Delete'))),
       );
     }
     
