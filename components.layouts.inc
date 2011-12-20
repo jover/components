@@ -20,6 +20,30 @@ function components_get_layouts() {
   return ctools_export_crud_load_all('components_layout');
 }
 
+/**
+ * Returns the components layouts which are allowed by the given components group.
+ * 
+ * @param ComponentsGroup $components_group
+ *   The Components Group object.
+ * @return 
+ *   Components Layouts
+ */
+function components_get_layouts_by_components_group($components_group) {
+  if (isset($components_group->data['component_layouts'])) {
+    $all_layouts = components_get_layouts();
+    $layouts = $components_group->data['component_layouts'];
+    
+    $filtered_layouts = array();
+    foreach ($layouts as $layout_id) {
+      if (isset($all_layouts[$layout_id])) {
+        $filtered_layouts[$layout_id] = $all_layouts[$layout_id];
+      }
+    }
+    return $filtered_layouts;
+  }
+  return FALSE;
+}
+
 function components_layout_settings_vertical_tabs(&$form) {
   // Add additional settings vertical tab if not present.
   if (!isset($form['additional_settings'])) {

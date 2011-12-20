@@ -271,7 +271,7 @@ function component_wizard_cancel(&$form_state) {
   $form_state['cancel'] = TRUE;
 }
 
-function component_wizard_add($entity_type, $entity_id, $group, $js = NULL, $step = NULL) {
+function component_wizard_add($entity_type, $entity_id, $components_group, $js = NULL, $step = NULL) {
   if ($js) {
     ctools_include('ajax');
     ctools_include('modal');
@@ -279,7 +279,7 @@ function component_wizard_add($entity_type, $entity_id, $group, $js = NULL, $ste
   
   $form_info = array(
     'id' => 'component-add',
-    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $group . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
+    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $components_group->internalIdentifier() . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
     'show trail' => TRUE,
     'show back' => TRUE,
     'show cancel' => TRUE,
@@ -322,7 +322,7 @@ function component_wizard_add($entity_type, $entity_id, $group, $js = NULL, $ste
   $component = component_wizard_cache_get($component_id);
   $component->host_entity_type = $entity_type;
   $component->host_entity_id = $entity_id;
-  $component->host_entity_group = $group;
+  $component->host_entity_group = $components_group->internalIdentifier();
   
   $component_types = components_get_types_names();
   
@@ -356,6 +356,7 @@ function component_wizard_add($entity_type, $entity_id, $group, $js = NULL, $ste
     // Put our component and ID into the form state cache so we can easily find it.
     'component_id' => $component_id,
     'component' => &$component,
+    'components_group' => $components_group,
   );
   
   // Send this all off to our form. This is like drupal_get_form only wizardy.
@@ -461,7 +462,9 @@ function component_wizard_add_component_type_layout($form, &$form_state) {
   
   $form_state['title'] = t('Choose component type and layout');
   
-  $layouts = components_get_layouts();
+  $components_group = $form_state['components_group'];
+  
+  $layouts = components_get_layouts_by_components_group($components_group);
   
   $bundles = array();
   foreach ($layouts as $id => $layout) {
