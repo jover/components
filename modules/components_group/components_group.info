@@ -1,5 +1,6 @@
 name = Components Group
 description = The Components Group module provides the ability to create groups to collect components.
 core = 7.x
+package = Components
 dependencies[] = entity
 files[] = components.module
