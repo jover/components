@@ -267,7 +267,12 @@ function components_group_edit_form($form, &$form_state, $components_group) {
   $bundles = field_info_bundles();
   $bundle_label = $bundles[$entity_type][$bundle]['label'];
   
+  $settings = $components_group->data;
+  $settings_component_layouts = (isset($settings['component_layouts'])) ? $settings['component_layouts'] : array();
+  
   drupal_set_title($components_group->label);
+  
+  $form['#components_group'] = $components_group;
   
   $form['components_group'] = array(
     '#tree' => TRUE,
@@ -287,11 +292,103 @@ function components_group_edit_form($form, &$form_state, $components_group) {
     '#weight' => -20,
   );
   
-  $form['components_group'][] = array();
+  $form['components_group']['allowed_component_layouts'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Allowed component layouts'),
+    '#description' => t('Check the component layouts which may be added to this components group.'),
+  );
+  
+  // @TODO: refactor code below: similar code in component_wizard_add_component_type_layout()
+  $layouts = components_get_layouts();
+  
+  $bundles = array();
+  foreach ($layouts as $id => $layout) {
+    if (isset($layout->bundle)) {
+      $bundle = $layout->bundle;
+      $bundles[$bundle][$id] = $layout;
+    }
+  }
+  
+  $form['components_group']['allowed_component_layouts']['component_types'] = array(
+    '#type' => 'vertical_tabs',
+  );
+  
+  foreach ($bundles as $bundle => $bundle_layouts) {
+    $bundle_label = component_type_get_label_by_type($bundle);
+    
+    $form['components_group']['allowed_component_layouts'][$bundle] = array(
+      '#type' => 'fieldset',
+      '#title' => ($bundle_label) ? $bundle_label : $bundle,
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#group' => 'components_group][allowed_component_layouts][component_types',
+    );
+    
+    foreach ($bundle_layouts as $id => $layout) {
+      if (!is_null($layout->image) && $image_file = file_load($layout->image)) {
+        $image = theme('image_style', array(
+          'path' => $image_file->uri,
+          'style_name' => 'thumbnail',// @TODO: create custom image style
+          'alt' => $layout->label,
+          'title' => $layout->label,
+        ));
+      }
+      else { // Default image
+        $image = theme('image', array(
+          'path' => drupal_get_path('module', 'components') . '/images/components.png',
+          'alt' => $layout->label,
+          'title' => $layout->label,
+          'height' => 100, // @TODO: change to size of image style
+          'width' => 100,
+        ));
+      }
+      
+      $form['components_group']['allowed_component_layouts'][$bundle][$id] = array(
+        '#type' => 'checkbox',
+        '#title' => $image . '<span>' . $layout->label . '</span>',
+        '#return_value' => TRUE,
+        '#default_value' => (in_array($id, $settings_component_layouts)) ? TRUE : FALSE,
+        '#parents' => array('components_group', 'component_layouts', $id),
+      );
+    }
+  }
+  
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save settings'),
+  );
   
   return $form;
 }
 
-function components_group_edit_form_submit($form, &$form_state) {
+function components_group_edit_form_validate($form, &$form_state) {
   
+}
+
+function components_group_edit_form_submit($form, &$form_state) {
+  $form_values = $form_state['values'];
+  $values = $form_values['components_group'];
+  
+  $components_group = $form['#components_group'];
+  
+  $components_group->label = $values['label'];
+  
+  $component_layouts = array();
+  foreach ($values['component_layouts'] as $layout => $value) {
+    if ($value) { // if value is 1 (checked = TRUE), thus not 0 (checked = FALSE)
+      $component_layouts[] = $layout;
+    }
+  }
+  $components_group->data['component_layouts'] = $component_layouts;
+  
+  components_group_save($components_group);
+  drupal_set_message(t('Saved %label components group settings.', array('%label' => $components_group->label)));
+  
+  $redirect = _field_ui_bundle_admin_path($components_group->entity_type, $components_group->bundle);
+  $form_state['redirect'] = $redirect . '/fields';
 }
