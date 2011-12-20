@@ -27,7 +27,7 @@ class ComponentsGroupAdminFormDisplayDecorator extends ComponentsGroupAdminFormD
     $table = &$form['fields'];
     
     foreach ($this->components_groups as $group) {
-      $name = $group->identifier();
+      $name = $group->name();
       $group_data = $group->data;
       $view_mode = $this->view_mode;
       
@@ -93,7 +93,7 @@ function components_group_display_overview_submit($form, &$form_state) {
   
   foreach ($form['#components_group_ids'] as $cgid) {
     if ($components_group = components_group_load($cgid)) {
-      $name = $components_group->identifier();
+      $name = $components_group->name();
       if (isset($form_values['fields'][$name])) {
         $values = $form_values['fields'][$name];
         $settings = &$components_group->data;

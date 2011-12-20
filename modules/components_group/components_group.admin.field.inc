@@ -20,7 +20,7 @@ class ComponentsGroupAdminFormFieldDecorator extends ComponentsGroupAdminFormDec
     $table = &$form['fields'];
     
     foreach ($this->components_groups as $group) {
-      $name = $group->identifier();
+      $name = $group->name();
       $group_data = $group->data;
       $admin_path = _field_ui_bundle_admin_path($this->entity_type, $this->bundle);
       
@@ -33,14 +33,14 @@ class ComponentsGroupAdminFormFieldDecorator extends ComponentsGroupAdminFormDec
       $table[$name]['edit'] = array(
         '#type' => 'link',
         '#title' => t('edit'),
-        '#href' => $admin_path . '/components-groups/' . $group->internalIdentifier(),
+        '#href' => $admin_path . '/components-groups/' . $group->identifier(),
         '#options' => array('attributes' => array('title' => t('Edit settings'))),
       );
       
       $table[$name]['delete'] = array(
         '#type' => 'link',
         '#title' => t('delete'),
-        '#href' => $admin_path . '/components-groups/' . $group->internalIdentifier() . '/delete',
+        '#href' => $admin_path . '/components-groups/' . $group->identifier() . '/delete',
         '#options' => array('attributes' => array('title' => t('Delete'))),
       );
     }
@@ -198,7 +198,7 @@ function components_group_field_overview_submit($form, &$form_state) {
   // Update existing components groups
   foreach ($form['#components_group_ids'] as $cgid) {
     if ($components_group = components_group_load($cgid)) {
-      $name = $components_group->identifier();
+      $name = $components_group->name();
       $components_group->entity_type = $entity_type;
       $components_group->bundle = $bundle;
       components_group_save($components_group);

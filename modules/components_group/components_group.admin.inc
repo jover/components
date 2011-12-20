@@ -44,10 +44,10 @@ class ComponentsGroupAdminFormDefault extends ComponentsGroupAdminForm {
     $form['#components_group_ids'] = array();
     foreach ($this->components_groups as $group) {
       // Store all components group IDs
-      $form['#components_group_ids'][] = $group->internalIdentifier();
+      $form['#components_group_ids'][] = $group->identifier();
       
       // Create the components group rows
-      $name = $group->identifier();
+      $name = $group->name();
       
       $form_state['components_group'][$name] = $group;
       
@@ -209,7 +209,7 @@ function components_group_pre_render($element) {
   list($entity_id) = entity_extract_ids($context['entity_type'], $context['entity']);
   
   foreach ($element['#components_groups'] as $components_group) {
-    $element[$components_group->identifier()] = components_group_view(
+    $element[$components_group->name()] = components_group_view(
       $components_group,
       $context['entity_type'],
       $entity_id,
@@ -229,7 +229,7 @@ function components_group_delete_form($form, &$form_state, $components_group) {
   
   $form['cgid'] = array(
     '#type' => 'hidden',
-    '#value' => $components_group->internalIdentifier(),
+    '#value' => $components_group->identifier(),
   );
   
   $form['redirect'] = array(
@@ -251,8 +251,8 @@ function components_group_delete_form($form, &$form_state, $components_group) {
 function components_group_delete_form_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     $components_group = components_group_load($form_state['values']['cgid']);
-    components_group_delete($components_group->internalIdentifier());
-    watchdog('components_group', 'Components Group: deleted cgid=@cgid', array('@cgid' => $components_group->internalIdentifier()));
+    components_group_delete($components_group->identifier());
+    watchdog('components_group', 'Components Group: deleted cgid=@cgid', array('@cgid' => $components_group->identifier()));
     drupal_set_message(t('The components group (%label) has been deleted.', array('%label' => $components_group->label)));
   }
   $form_state['redirect'] = $form_state['values']['redirect'];

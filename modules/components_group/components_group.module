@@ -318,7 +318,7 @@ function components_group_view($components_group, $host_entity_type, $host_entit
 function template_preprocess_components_group(&$vars) {
   $elements = &$vars['elements'];
   $components_group = $elements['#components_group'];
-  $components_group_id = $components_group->internalIdentifier();
+  $components_group_id = $components_group->identifier();
   $host_entity_type = $elements['#host_entity_type'];
   $host_entity_id = $elements['#host_entity_id'];
   
@@ -329,7 +329,7 @@ function template_preprocess_components_group(&$vars) {
   $vars = array_merge((array) $components_group, $vars);
   
   // Id
-  $vars['id'] = drupal_html_class($components_group->identifier());
+  $vars['id'] = drupal_html_class($components_group->name());
   // @TODO: should we use drupal_html_id() instead of drupal_html_class()?
   
   // Components
@@ -449,12 +449,12 @@ class ComponentsGroup extends Entity {
   }
   
   public function defaultUri() {
-    $cgid = $this->internalIdentifier();
+    $cgid = $this->identifier();
     return ($cgid) ? array('path' => 'components-group/' . $cgid) : NULL;
   }
   
-  public function identifier() {
-    return ($id = $this->internalIdentifier()) ? 'components_group_' . $id : NULL;
+  public function name() {
+    return ($id = $this->identifier()) ? 'components_group_' . $id : NULL;
   }
   
 }

@@ -279,7 +279,7 @@ function component_wizard_add($entity_type, $entity_id, $components_group, $js =
   
   $form_info = array(
     'id' => 'component-add',
-    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $components_group->internalIdentifier() . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
+    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $components_group->identifier() . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
     'show trail' => TRUE,
     'show back' => TRUE,
     'show cancel' => TRUE,
@@ -322,7 +322,7 @@ function component_wizard_add($entity_type, $entity_id, $components_group, $js =
   $component = component_wizard_cache_get($component_id);
   $component->host_entity_type = $entity_type;
   $component->host_entity_id = $entity_id;
-  $component->host_entity_group = $components_group->internalIdentifier();
+  $component->host_entity_group = $components_group->identifier();
   
   $component_types = components_get_types_names();
   
