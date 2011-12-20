@@ -98,9 +98,9 @@ function component_form($form, &$form_state) {
     '#value' => $component->host_entity_id,
   );
   
-  $form['host_entity_field_name'] = array(
+  $form['host_entity_group'] = array(
     '#type' => 'hidden',
-    '#value' => $component->host_entity_field_name,
+    '#value' => $component->host_entity_group,
   );
 
   field_attach_form('component', $component, $form, $form_state);
@@ -271,7 +271,7 @@ function component_wizard_cancel(&$form_state) {
   $form_state['cancel'] = TRUE;
 }
 
-function component_wizard_add($entity_type, $entity_id, $field_name, $js = NULL, $step = NULL) {
+function component_wizard_add($entity_type, $entity_id, $group, $js = NULL, $step = NULL) {
   if ($js) {
     ctools_include('ajax');
     ctools_include('modal');
@@ -279,7 +279,7 @@ function component_wizard_add($entity_type, $entity_id, $field_name, $js = NULL,
   
   $form_info = array(
     'id' => 'component-add',
-    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
+    'path' => 'component/add/' . $entity_type . '/' . $entity_id . '/' . $group . '/' . ($js ? 'ajax' : 'nojs') . '/%step',
     'show trail' => TRUE,
     'show back' => TRUE,
     'show cancel' => TRUE,
@@ -322,7 +322,7 @@ function component_wizard_add($entity_type, $entity_id, $field_name, $js = NULL,
   $component = component_wizard_cache_get($component_id);
   $component->host_entity_type = $entity_type;
   $component->host_entity_id = $entity_id;
-  $component->host_entity_field_name = $field_name;
+  $component->host_entity_group = $group;
   
   $component_types = components_get_types_names();
   
@@ -471,12 +471,19 @@ function component_wizard_add_component_type_layout($form, &$form_state) {
     }
   }
   
+  $form['component_types'] = array(
+    '#type' => 'vertical_tabs',
+  );
+  
   foreach ($bundles as $bundle => $bundle_layouts) {
     $bundle_label = component_type_get_label_by_type($bundle);
-    $form[$bundle]['label'] = array(
-      '#prefix' => '<h2>',
-      '#markup' => ($bundle_label) ? $bundle_label : $bundle,
-      '#suffix' => '</h2>',
+    
+    $form[$bundle] = array(
+      '#type' => 'fieldset',
+      '#title' => ($bundle_label) ? $bundle_label : $bundle,
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#group' => 'component_types',
     );
     
     foreach ($bundle_layouts as $id => $layout) {
@@ -507,7 +514,7 @@ function component_wizard_add_component_type_layout($form, &$form_state) {
       );
     }
   }
-  
+
   return $form;
 }
 

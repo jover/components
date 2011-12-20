@@ -25,7 +25,7 @@ class ComponentsMetadataController extends EntityDefaultMetadataController {
       'getter callback' => 'entity_property_getter_method',
       'setter callback' => 'entity_property_verbatim_set',
       'setter permission' => 'administer components',
-      'required' => TRUE,
+      'required' => FALSE,
       'description' => t('The component type.'),
     ) + $properties['type'];
   

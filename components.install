@@ -42,22 +42,36 @@ function components_schema() {
       'host_entity_id' => array(
         'description' => 'The ID of the host entity of a component.',
         'type' => 'int',
+        'unsigned' => TRUE,
         'not null' => FALSE,
         'default' => 0,
       ),
-      'host_entity_field_name' => array(
-        'description' => 'The field name of the host entity which holds a component.',
+      'host_entity_group' => array(
+        'description' => 'The group of the host entity which holds a component.',
         'type' => 'varchar',
         'length' => 255, // @TODO: check length
         'not null' => FALSE,
+        'default' => '',
+      ),
+      'delta' => array(
+        'description' => 'The delta of a component.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'language' => array(
+        'description' => 'The {languages}.language of a component.',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
         'default' => '',
       ),
       'status' => array(
         'description' => 'Boolean indicating whether a component is published (visible to non-administrators).',
         'type' => 'int',
         'not null' => TRUE,
-        'default' => 1,
         'size' => 'tiny',
+        'default' => 1,
       ),
     ),
     'foreign keys' => array(
@@ -65,6 +79,15 @@ function components_schema() {
         'table' => 'component_type',
         'columns' => array('type' => 'type'),
       ),
+      'host_entity_group' => array(
+        'table' => 'components_group',
+        'columns' => array('host_entity_group', 'cgid'),
+      ),
+    ),
+    'indexes' => array(
+      'component_host' => array('host_entity_type', 'host_entity_id', 'cid'),
+      'component_status_type' => array('status', 'type', 'cid'),
+      'component_type' => array('type'),
     ),
     'primary key' => array('cid'),
   );
@@ -95,7 +118,7 @@ function components_schema() {
       'description' => array(
         'description' => 'A brief description of this type.',
         'type' => 'text',
-        'not null' => TRUE,
+        'not null' => FALSE,
         'size' => 'medium',
         'translatable' => TRUE,
       ),
@@ -164,33 +187,6 @@ function components_schema() {
 }
 
 /**
- * Implements hook_field_schema().
- */
-function components_field_schema($field) {
-  return array(
-    'columns' => array(
-      'cid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => FALSE,
-      ),
-      'view_mode' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => FALSE,
-      ),
-    ),
-    'indexes' => array('cid' => array('cid')),
-    'foreign keys' => array(
-      'cid' => array(
-        'table' => 'component',
-        'columns' => array('cid' => 'cid'),
-      ),
-    ),
-  );
-}
-
-/**
  * Implements hook_install().
  */
 function components_install() {
@@ -201,22 +197,5 @@ function components_install() {
  * Implements hook_uninstall().
  */
 function components_uninstall() {
-  foreach (field_info_instances() as $entity_type => $type_bundles) {
-    foreach ($type_bundles as $bundle => $bundle_instances) {
-      foreach ($bundle_instances as $field_name => $instance) {
-        $field = field_info_field($field_name);
-        // Delete all field instances of type "component_reference", their data and the field itself
-        if ($field['type'] == 'component_reference') {
-          field_delete_field($field_name);
-        }
-        // Delete all field instances of all component types
-        elseif ($entity_type == 'component') {
-          field_delete_instance($instance);
-        }
-      }
-    }
-  }
   
-  // Purge all field information
-  field_purge_batch(1000);
 }

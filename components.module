@@ -5,7 +5,6 @@
  * Module file for the components module.
  */
 
-module_load_include('inc', 'components', 'components.fields');
 module_load_include('inc', 'components', 'components.layouts');
 
 /**
@@ -38,7 +37,7 @@ function components_menu() {
   
   // @TODO: title callback with type name
   // @TODO: access arguments 'create any $type component'
-  $items['component/add/%/%/%/%ctools_js'] = array( // component/add/entity_type/entity_id/field_name/ajax
+  $items['component/add/%/%/%/%ctools_js'] = array( // component/add/entity_type/entity_id/group/ajax
     'title' => 'Add component',
     'page callback' => 'component_wizard_add',
     'page arguments' => array(2, 3, 4, 5),
@@ -264,6 +263,27 @@ function component_load_multiple($cids = array(), $conditions = array(), $reset 
   return entity_load('component', $cids, $conditions, $reset);
 }
 
+function component_load_all_by_host($host_entity_type, $host_entity_id, $host_entity_group = FALSE) {
+  $query = db_select('component', 'c')
+    ->fields('c', array('cid'))
+    ->condition('c.host_entity_type', $host_entity_type, '=')
+    ->condition('c.host_entity_id', $host_entity_id, '=');
+  
+  if ($host_entity_group && is_numeric($host_entity_group)) {
+    $query->condition('c.host_entity_group', $host_entity_group, '=');
+  }
+  
+  // @TODO: order by weight
+  $result = $query->execute();
+  
+  $cids = array();
+  foreach ($result as $record) {
+    $cids[$record->cid] = $record->cid;
+  }
+  
+  return component_load_multiple($cids);
+}
+
 /**
  * Deletes a component object.
  * 
@@ -298,43 +318,6 @@ function component_access($op, $entity_type) {
   if (user_access('administer components')) {
     return TRUE;
   }
-}
-
-// @TODO: security concerning the type and error message
-function component_add_orig($type, $entity_type, $entity_id, $field_name) {
-  // Check wheter the given entity_type exists
-  $info = entity_get_info();
-  if (!isset($info[$entity_type])) {
-    return MENU_NOT_FOUND;
-  }
-  
-  // Load the entity with the given entity_type and entity_id
-  $entity = entity_load_single($entity_type, $entity_id);
-  if (!$entity) {
-    return MENU_NOT_FOUND;
-  }
-  
-  // Ensure the given entity is of a bundle that has an instance of the field
-  list($id, $rev_id, $bundle) = entity_extract_ids($entity_type, $entity);
-  $instance = field_info_instance($entity_type, $field_name, $bundle);
-  if (!$instance) {
-    return MENU_NOT_FOUND;
-  }
-  
-  // Check field cardinality.
-  $field = field_info_field($field_name);
-  $langcode = LANGUAGE_NONE;
-  if (!($field['cardinality'] == FIELD_CARDINALITY_UNLIMITED || !isset($entity->{$field_name}[$langcode]) || count($entity->{$field_name}[$langcode]) < $field['cardinality'])) {
-    drupal_set_message(t('No more components can be added to this field.'), 'error');
-    return;
-  }
-  
-  drupal_set_title(t('Create new %type component', array('%type' => component_type_get_label_by_type($type))), PASS_THROUGH);
-  
-  $component = component_create(array('type' => $type));
-  
-  // @TODO: check permission to create a component
-  return drupal_get_form('component_form', $component, $entity_type, $entity_id, $field_name);
 }
 
 /**
@@ -596,7 +579,7 @@ class Component extends Entity {
   public $view_mode;
   public $host_entity_type;
   public $host_entity_id;
-  public $host_entity_field_name;
+  public $host_entity_group;
   
   public function __construct($values = array()) {
     if (isset($values['type']) && is_object($values['type'])) {
@@ -628,24 +611,11 @@ class Component extends Entity {
     if (!empty($this->is_new)) {
       $transaction = db_transaction();
       try {
-        if (!(isset($this->host_entity_type)) || !(isset($this->host_entity_id)) || !(isset($this->host_entity_field_name))) {
-          throw new Exception('Unable to create a component without a given host entity.');
-        }
-        
-        // Load the host entity with the given entity_type and entity_id
-        $host = entity_load_single($this->host_entity_type, $this->host_entity_id);
-        if (!$host) {
+        if (!(isset($this->host_entity_type)) || !(isset($this->host_entity_id)) || !(isset($this->host_entity_group))) {
           throw new Exception('Unable to create a component without a given host entity.');
         }
         
         entity_get_controller($this->entityType)->save($this, $transaction);
-        
-        $host->{$this->host_entity_field_name}[$host->language][] = array(
-          'cid' => $this->identifier(),
-          'view_mode' => isset($this->view_mode) ? $this->view_mode : NULL,
-        );
-        
-        entity_save($this->host_entity_type, $host);
         
         return $this;
       }
@@ -656,35 +626,6 @@ class Component extends Entity {
     }
     else {
       return entity_get_controller($this->entityType)->save($this);
-    }
-  }
-  
-  public function delete() {
-    $id = $this->identifier();
-    
-    parent::delete();
-    
-    // Delete all references to this component
-    if ($fields = components_get_field_instances()) {
-      foreach ($fields as $field_name => $entity_data) {
-        $query = new EntityFieldQuery();
-        $query->fieldCondition($field_name, 'cid', $id, '=');
-        $results = $query->execute();
-        
-        foreach ($results as $entity_type => $entities) {
-          foreach ($entities as $entity_id => $entity_values) {
-            $entity = entity_load_single($entity_type, $entity_id);
-            foreach ($entity->{$field_name} as $lang => &$data) {
-              foreach ($data as $delta => $item) {
-                if ($item['cid'] == $id) {
-                  unset($data[$delta]);
-                }
-              }
-            }
-            entity_save($entity_type, $entity);
-          }
-        }
-      }
     }
   }
   
