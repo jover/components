@@ -1,0 +1,43 @@
+#content .components-group {
+  outline: 2px dashed #CCC;
+  margin: 5px;
+}
+
+#content .components-group .components.ui-sortable {
+  padding: 10px;
+}
+
+#content .components-group.contextual-links-region-active {
+  outline: 2px dashed #000;
+}
+
+#content .components-group h2.components-group-label {
+  background: #E0E0D8;
+  font-size: 1em;
+  font-weight: bold;
+  margin: 0;
+  padding: 0.3em 17px;
+}
+
+#content .components-group .components.ui-sortable .component {
+  cursor: move;
+  min-height: 1px;
+}
+
+#content .component-placeholder {
+  background: #e2e1dc;
+  padding: 6px 4px 6px 8px; /* LTR */
+  margin: 3px 3px 3px 0; /* LTR */
+  float: left; /* LTR */
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+}
+
+#content .component-placeholder {
+  margin: 0 0 20px 0;
+  padding: 0;
+  display: block;
+  height: 1.6em;
+  width: 100%;
+}

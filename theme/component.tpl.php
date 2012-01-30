@@ -42,5 +42,8 @@
  */
 ?>
 <div id="component-<?php print $component->cid; ?>" class="<?php print $classes; ?> clearfix"<?php print $attributes; ?>>
+  <?php if ($contextual_links): ?>
+    <?php print render($contextual_links); ?>
+  <?php endif; ?>
   <?php print render($content); ?>
 </div>

@@ -332,6 +332,9 @@ function template_preprocess_components_group(&$vars) {
   $vars['id'] = drupal_html_class($components_group->name());
   // @TODO: should we use drupal_html_id() instead of drupal_html_class()?
   
+  // Label
+  $vars['label'] = $components_group->label;
+  
   // Components
   $components = component_load_all_by_host($host_entity_type, $host_entity_id, $components_group_id);
   if (is_array($components) && count($components) > 0) {
@@ -370,6 +373,17 @@ function template_preprocess_components_group(&$vars) {
   drupal_add_js($modal_style, 'setting');
   ctools_add_js('components', 'components');
   ctools_add_css('components', 'components');
+  
+  $module_path = drupal_get_path('module', 'components_group');
+  drupal_add_css($module_path . '/css/components-group.css');
+  drupal_add_js(array(
+    'components_group' => array(
+      'launchSortMode' => TRUE,
+      'emptyComponentsGroupText' => t('Drag here'),
+    )
+  ), 'setting');
+  drupal_add_js($module_path . '/js/components-group.js');
+  drupal_add_library('system', 'ui.sortable');
   
   if (module_exists('contextual')) {
     $links = array();
