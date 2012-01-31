@@ -98,6 +98,12 @@ function components_group_menu() {
     }
   }
   
+  $items['components-group/order/update'] = array(
+    'page callback' => 'components_group_order_update',
+    'access arguments' => array('administer components groups'),
+    'type' => MENU_CALLBACK,
+  );
+  
   return $items;
 }
 
@@ -380,6 +386,8 @@ function template_preprocess_components_group(&$vars) {
     'components_group' => array(
       'launchSortMode' => TRUE,
       'emptyComponentsGroupText' => t('Drag here'),
+      'formToken' => drupal_get_token('components-group-order-update'),
+      'updatePath' => url('components-group/order/update'),
     )
   ), 'setting');
   drupal_add_js($module_path . '/js/components-group.js');
@@ -425,6 +433,25 @@ function template_preprocess_components_group(&$vars) {
       '#suffix' => '</div>',
     );
   }
+}
+
+function components_group_order_update() {
+  drupal_theme_initialize();
+  global $theme_key;
+  // Check the form token to make sure we have a valid request.
+  if (!empty($_REQUEST['form_token']) && drupal_valid_token($_REQUEST['form_token'], 'components-group-order-update')) {
+    parse_str($_REQUEST['components_groups'], $components_groups);
+    foreach ($components_groups as $components_group_id => $components) {
+      foreach ($components as $delta => $component_id) {
+        if ($component = component_load($component_id)) {
+          $component->host_entity_group = $components_group_id;
+          $component->delta = $delta;
+          component_save($component);
+        }
+      }
+    }
+  }
+  drupal_exit();
 }
 
 /*********/

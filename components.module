@@ -273,7 +273,7 @@ function component_load_all_by_host($host_entity_type, $host_entity_id, $host_en
     $query->condition('c.host_entity_group', $host_entity_group, '=');
   }
   
-  // @TODO: order by weight
+  $query->orderBy('delta', 'ASC');
   $result = $query->execute();
   
   $cids = array();

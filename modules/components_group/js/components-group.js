@@ -122,7 +122,31 @@
     },
     
     update: function (event, ui) {
+      Drupal.behaviors.components_group.addPlaceholders();
       
+      $.post(Drupal.settings.components_group.updatePath, {
+          'form_token': Drupal.settings.components_group.formToken,
+          'components_groups': Drupal.behaviors.components_group.getOrder()
+        }
+      );
+    },
+    
+    /**
+     * Return the current order of the components in each components group,
+     * in query string format.
+     */
+    getOrder: function () {
+      var order = [];
+      $('.components-group').each(function () {
+        var components_group_id = $(this).attr('id').replace('components-group-', '');
+        var components = $('.components', this).sortable('toArray');
+        $.each(components, function () {
+          var component_id = this.replace('component-', '');
+          order.push(components_group_id + '[]=' + component_id);
+        });
+      });
+      order = order.join('&');
+      return order;
     }
   };
   
