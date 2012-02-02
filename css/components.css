@@ -60,3 +60,32 @@
   margin: 0;
   padding: .5em 1em;
 }
+
+#modalContent .vertical-tabs .form-item-component-type-layout {
+  display: inline-block;
+  margin: 0 1.5em 1.5em 0;
+  padding: 0.5em;
+  vertical-align: top;
+  width: 100px;
+}
+
+#modalContent .vertical-tabs .form-item-component-type-layout.selected,
+#modalContent .vertical-tabs .form-item-component-type-layout:hover {
+  background: #EEE;
+}
+
+#modalContent .vertical-tabs .form-item-component-type-layout .form-radio {
+  display: none;
+}
+
+#modalContent .vertical-tabs .form-item-component-type-layout label.option {
+  cursor: pointer;
+  display: block;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+#modalContent .vertical-tabs .form-item-component-type-layout label.option span {
+  display: block;
+}

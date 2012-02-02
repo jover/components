@@ -436,8 +436,6 @@ function template_preprocess_components_group(&$vars) {
 }
 
 function components_group_order_update() {
-  drupal_theme_initialize();
-  global $theme_key;
   // Check the form token to make sure we have a valid request.
   if (!empty($_REQUEST['form_token']) && drupal_valid_token($_REQUEST['form_token'], 'components-group-order-update')) {
     parse_str($_REQUEST['components_groups'], $components_groups);
